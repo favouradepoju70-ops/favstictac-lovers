@@ -1417,11 +1417,212 @@ export default function App() {
         </div>
 
         <button className="btn btn-outline" onClick={()=>{loadMyHistory(authUser.uid);setScreen("history")}}>📜 View Game History</button>
+        {authUser.uid==="FeJCFJjq36XSLXvxbs7UIt7I9Oo1"&&(
+          <button className="btn btn-primary" onClick={()=>setScreen("admin")}>🎛️ Admin Dashboard</button>
+        )}
         <button className="btn btn-x" onClick={handleLogout}>🚪 Sign Out</button>
       </div>
       <BottomNav/>
     </div></div></>
   );
 
+  // ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
+  if(screen==="admin") return <AdminDashboard authUser={authUser} db={db} onBack={()=>setScreen("profile")}/>;
+
   return null;
 }
+
+// ── ADMIN DASHBOARD COMPONENT ─────────────────────────────────────────────────
+function AdminDashboard({authUser, db, onBack}) {
+  const ADMIN_UID = "FeJCFJjq36XSLXvxbs7UIt7I9Oo1";
+  const [tab, setTab] = useState("overview");
+  const [users, setUsers] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [totalGames, setTotalGames] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [searchUser, setSearchUser] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userHistory, setUserHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [actionMsg, setActionMsg] = useState("");
+
+  useEffect(()=>{ if(authUser.uid===ADMIN_UID) loadAll(); },[]);
+
+  const loadAll = async () => {
+    setLoading(true);
+    const {collection, getDocs, query, orderBy, limit} = window._fb;
+    try {
+      // Load all users
+      const usersSnap = await getDocs(collection(db,"users"));
+      const usersData = usersSnap.docs.map(d=>({uid:d.id,...d.data()}));
+      setUsers(usersData);
+      // Load leaderboard
+      const lbSnap = await getDocs(query(collection(db,"leaderboard"),orderBy("wins","desc"),limit(50)));
+      const lbData = lbSnap.docs.map(d=>({uid:d.id,...d.data()}));
+      setLeaderboard(lbData);
+      // Total games = sum of all games on leaderboard / 2 (each game counted twice)
+      const total = lbData.reduce((s,p)=>s+(p.games||0),0);
+      setTotalGames(Math.round(total/2));
+    } catch(e){ console.error(e); }
+    setLoading(false);
+  };
+
+  const loadUserHistory = async (uid) => {
+    setLoadingHistory(true);
+    const {collection, query, orderBy, limit, getDocs} = window._fb;
+    try {
+      const snap = await getDocs(query(collection(db,`users/${uid}/history`),orderBy("createdAt","desc"),limit(20)));
+      setUserHistory(snap.docs.map(d=>({id:d.id,...d.data()})));
+    } catch { setUserHistory([]); }
+    setLoadingHistory(false);
+  };
+
+  const filteredUsers = users.filter(u=>
+    u.username?.toLowerCase().includes(searchUser.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchUser.toLowerCase())
+  );
+
+  const totalWins = leaderboard.reduce((s,p)=>s+(p.wins||0),0);
+  const totalDraws = leaderboard.reduce((s,p)=>s+(p.draws||0),0);
+  const mostActive = [...leaderboard].sort((a,b)=>(b.games||0)-(a.games||0))[0];
+  const topPlayer = leaderboard[0];
+
+  // New users this week
+  const oneWeekAgo = Date.now() - 7*24*60*60*1000;
+  const newThisWeek = users.filter(u=>u.createdAt>oneWeekAgo).length;
+  const newToday = users.filter(u=>u.createdAt>Date.now()-24*60*60*1000).length;
+
+  const ACSS = `
+    .adm{min-height:100vh;background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;padding:0;
+      background:radial-gradient(ellipse at 15% 40%,#1a0828 0%,#08080f 55%)}
+    .adm-header{background:#111118;border-bottom:1px solid #22223a;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+    .adm-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:#ffd700}
+    .adm-tabs{display:flex;gap:4px;padding:12px 16px;overflow-x:auto;scrollbar-width:none}
+    .adm-tab{padding:7px 12px;border-radius:8px;border:1px solid #22223a;background:transparent;color:#5a5a7a;
+      font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;white-space:nowrap;transition:all .18s;text-transform:uppercase;letter-spacing:1px}
+    .adm-tab.on{background:#ffd700;color:#08080f;border-color:#ffd700;font-weight:700}
+    .adm-body{padding:0 16px 80px}
+    .adm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .adm-stat{background:#111118;border:1px solid #22223a;border-radius:12px;padding:14px 12px;text-align:center}
+    .adm-stat-val{font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;line-height:1}
+    .adm-stat-lbl{font-size:.6rem;color:#5a5a7a;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+    .adm-section{margin-bottom:20px}
+    .adm-section-title{font-size:.65rem;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #22223a}
+    .adm-user-row{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;background:#111118;border:1px solid #22223a;margin-bottom:7px;cursor:pointer;transition:all .18s}
+    .adm-user-row:hover{border-color:#ffd700}
+    .adm-user-info{flex:1;overflow:hidden}
+    .adm-user-name{font-weight:700;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .adm-user-email{font-size:.65rem;color:#5a5a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .adm-badge{padding:3px 8px;border-radius:20px;font-size:.6rem;font-weight:700}
+    .adm-badge-gold{background:rgba(255,215,0,.15);color:#ffd700;border:1px solid rgba(255,215,0,.3)}
+    .adm-badge-green{background:rgba(46,213,115,.15);color:#2ed573;border:1px solid rgba(46,213,115,.3)}
+    .adm-badge-red{background:rgba(255,71,87,.15);color:#ff4757;border:1px solid rgba(255,71,87,.3)}
+    .adm-lb-row{display:grid;grid-template-columns:24px 1fr repeat(3,44px);gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid #22223a;font-size:.72rem}
+    .adm-input{width:100%;padding:10px 14px;background:#16161f;border:1px solid #22223a;border-radius:9px;color:#f0ede8;font-family:'Space Mono',monospace;font-size:.8rem;outline:none;margin-bottom:10px}
+    .adm-input:focus{border-color:#ffd700}
+    .adm-back{background:transparent;border:1px solid #22223a;color:#f0ede8;padding:8px 14px;border-radius:8px;font-family:'Space Mono',monospace;font-size:.72rem;cursor:pointer;transition:all .18s}
+    .adm-back:hover{border-color:#ffd700;color:#ffd700}
+    .adm-profile-card{background:#111118;border:1px solid #22223a;border-radius:14px;padding:16px;margin-bottom:14px}
+    .adm-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a0828,#0a1a10);border:2px solid #ffd700;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;overflow:hidden;flex-shrink:0}
+    .adm-avatar img{width:100%;height:100%;object-fit:cover}
+    .adm-hist-item{padding:9px;border-radius:8px;background:#16161f;margin-bottom:6px;font-size:.7rem}
+  `;
+
+  if(authUser.uid!==ADMIN_UID) return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#08080f",color:"#ff4757",fontFamily:"monospace",textAlign:"center",padding:20}}>
+      <div><div style={{fontSize:"3rem"}}>🚫</div><div style={{marginTop:10,fontSize:".9rem"}}>Access Denied.<br/>Admins only.</div>
+        <button onClick={onBack} style={{marginTop:16,background:"transparent",border:"1px solid #22223a",color:"#f0ede8",padding:"8px 16px",borderRadius:8,cursor:"pointer",fontFamily:"monospace"}}>← Go Back</button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="adm">
+      <style>{ACSS}</style>
+      {/* Header */}
+      <div className="adm-header">
+        <div>
+          <div className="adm-title">🎛️ Admin Dashboard</div>
+          <div style={{fontSize:".6rem",color:"#5a5a7a",marginTop:2}}>FavsTicTac Lovers · Welcome, {authUser.username}</div>
+        </div>
+        <button className="adm-back" onClick={onBack}>← Back</button>
+      </div>
+
+      {/* Tabs */}
+      <div className="adm-tabs">
+        {[["📊","overview","Overview"],["👥","users","Users"],["🏆","leaderboard","Leaderboard"],["📈","stats","Stats"]].map(([icon,t,label])=>(
+          <button key={t} className={`adm-tab ${tab===t?"on":""}`} onClick={()=>setTab(t)}>{icon} {label}</button>
+        ))}
+      </div>
+
+      <div className="adm-body">
+        {loading&&<div style={{textAlign:"center",padding:"40px 0",color:"#5a5a7a"}}>
+          <div style={{width:28,height:28,border:"2px solid #22223a",borderTopColor:"#ffd700",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 10px"}}/>
+          Loading data…
+        </div>}
+
+        {/* ── OVERVIEW ── */}
+        {!loading&&tab==="overview"&&(<>
+          <div className="adm-grid">
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{users.length}</div><div className="adm-stat-lbl">👥 Total Users</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{totalGames}</div><div className="adm-stat-lbl">🎮 Total Games</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ff4757"}}>{newToday}</div><div className="adm-stat-lbl">🆕 New Today</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#a29bfe"}}>{newThisWeek}</div><div className="adm-stat-lbl">📅 New This Week</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{totalWins}</div><div className="adm-stat-lbl">🏆 Total Wins</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{totalDraws}</div><div className="adm-stat-lbl">🤝 Total Draws</div></div>
+          </div>
+
+          {topPlayer&&(<div className="adm-section">
+            <div className="adm-section-title">🥇 Top Player</div>
+            <div className="adm-user-row">
+              <div className="adm-avatar">{topPlayer.photoURL?<img src={topPlayer.photoURL} alt=""/>:topPlayer.username?.slice(0,2).toUpperCase()}</div>
+              <div className="adm-user-info">
+                <div className="adm-user-name">👑 {topPlayer.username}</div>
+                <div className="adm-user-email">{topPlayer.wins} wins · {topPlayer.games} games</div>
+              </div>
+              <div className="adm-badge adm-badge-gold">#1</div>
+            </div>
+          </div>)}
+
+          {mostActive&&mostActive.username!==topPlayer?.username&&(<div className="adm-section">
+            <div className="adm-section-title">🔥 Most Active Player</div>
+            <div className="adm-user-row">
+              <div className="adm-avatar">{mostActive.photoURL?<img src={mostActive.photoURL} alt=""/>:mostActive.username?.slice(0,2).toUpperCase()}</div>
+              <div className="adm-user-info">
+                <div className="adm-user-name">🔥 {mostActive.username}</div>
+                <div className="adm-user-email">{mostActive.games} games played</div>
+              </div>
+              <div className="adm-badge adm-badge-green">{mostActive.games} games</div>
+            </div>
+          </div>)}
+
+          <div className="adm-section">
+            <div className="adm-section-title">🕐 Recent Registrations</div>
+            {[...users].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,5).map(u=>(
+              <div key={u.uid} className="adm-user-row" onClick={()=>{setSelectedUser(u);loadUserHistory(u.uid);setTab("users");}}>
+                <div className="adm-avatar">{u.photoURL?<img src={u.photoURL} alt=""/>:u.username?.slice(0,2).toUpperCase()}</div>
+                <div className="adm-user-info">
+                  <div className="adm-user-name">{u.username}</div>
+                  <div className="adm-user-email">{u.email}</div>
+                </div>
+                <div className="adm-badge adm-badge-green">New</div>
+              </div>
+            ))}
+          </div>
+        </>)}
+
+        {/* ── USERS ── */}
+        {!loading&&tab==="users"&&(<>
+          {selectedUser?(
+            <div>
+              <button className="adm-back" style={{marginBottom:14}} onClick={()=>{setSelectedUser(null);setUserHistory([]);}}>← All Users</button>
+              <div className="adm-profile-card">
+                <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+                  <div className="adm-avatar" style={{width:56,height:56,fontSize:"1.2rem"}}>{selectedUser.photoURL?<img src={selectedUser.photoURL} alt=""/>:selectedUser.username?.slice(0,2).toUpperCase()}</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:".9rem"}}>{selectedUser.username}</div>
+                    <div style={{fontSize:".68rem",color:"#5a5a7a",marginTop:2}}>{selectedUser.email}</div>
+                    {selectedUser.uid===ADMIN_UID&&<div className="adm-badge adm-badge-gold" style={{display:"inline-block",marginTop:4}}>👑 Admin</div>}
+                  </div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,fontSize:".7rem"
