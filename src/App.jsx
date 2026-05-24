@@ -204,13 +204,49 @@ body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-hei
 .log-entry{display:flex;gap:7px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.68rem}
 .log-x{color:var(--x)}.log-o{color:var(--o)}
 .game-chat{margin-top:12px;background:#16161f;border-radius:10px;border:1px solid var(--border);overflow:hidden}
-.game-chat-header{padding:8px 12px;border-bottom:1px solid var(--border);font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px}
-.game-chat-msgs{height:100px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px;scrollbar-width:thin}
-.game-chat-msg{font-size:.7rem;padding:2px 0}
-.game-chat-input{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border)}
+.game-chat-header{padding:8px 12px;border-bottom:1px solid var(--border);font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;display:flex;justify-content:space-between;align-items:center}
+.game-chat-msgs{height:120px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin}
+.game-chat-msg{font-size:.7rem;padding:4px 8px;border-radius:8px;max-width:90%}
+.game-chat-msg.mine{background:rgba(255,215,0,.12);align-self:flex-end;text-align:right}
+.game-chat-msg.other{background:rgba(46,213,115,.08);align-self:flex-start}
+.game-chat-input{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);align-items:center}
+/* Chat popup */
+.chat-popup{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:999;
+  background:var(--card);border:2px solid var(--o);border-radius:14px;padding:12px 16px;
+  max-width:300px;width:90%;animation:popIn .3s cubic-bezier(.36,.07,.19,.97);box-shadow:0 8px 32px rgba(0,0,0,.5)}
+@keyframes popIn{0%{transform:translateX(-50%) translateY(-20px);opacity:0}100%{transform:translateX(-50%) translateY(0);opacity:1}}
+.chat-popup-name{font-size:.65rem;color:var(--o);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.chat-popup-text{font-size:.8rem;color:#f0ede8;line-height:1.4}
+/* Voice note */
+.voice-btn{width:40px;height:40px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;flex-shrink:0;font-size:1.1rem}
+.voice-btn.idle{background:rgba(255,71,87,.15);color:var(--x)}
+.voice-btn.recording{background:var(--x);color:#fff;animation:pulse-rec .6s ease infinite alternate}
+@keyframes pulse-rec{from{box-shadow:0 0 0 0 rgba(255,71,87,.5)}to{box-shadow:0 0 0 8px rgba(255,71,87,0)}}
+.voice-msg-btn{background:rgba(46,213,115,.15);border:1px solid rgba(46,213,115,.3);color:var(--o);border-radius:20px;padding:5px 12px;font-size:.72rem;cursor:pointer;display:flex;align-items:center;gap:6px}
 .emoji-row{display:flex;gap:5px;padding:6px 0;flex-wrap:wrap}
 .emoji-btn{background:#16161f;border:1px solid var(--border);border-radius:7px;padding:5px 7px;font-size:.95rem;cursor:pointer;transition:all .15s}
 .emoji-btn:hover{background:#22223a;transform:scale(1.1)}
+/* Welcome screen */
+.welcome-overlay{position:fixed;inset:0;background:rgba(8,8,15,.97);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.welcome-box{background:var(--card);border:2px solid var(--accent);border-radius:20px;padding:32px 24px;max-width:380px;width:100%;text-align:center;animation:welcomeIn .5s cubic-bezier(.36,.07,.19,.97)}
+@keyframes welcomeIn{0%{transform:scale(.7) translateY(40px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+.welcome-emoji{font-size:3.5rem;margin-bottom:12px;animation:bounce 1s ease infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+.welcome-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--accent);margin-bottom:12px;line-height:1.3}
+.welcome-msg{font-size:.78rem;color:#f0ede8;line-height:1.7;margin-bottom:20px;opacity:.9}
+.welcome-name{color:var(--accent);font-weight:700}
+/* Symbol picker */
+.symbol-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.symbol-btn{padding:14px;border-radius:10px;border:2px solid var(--border);background:#16161f;cursor:pointer;transition:all .18s;text-align:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem}
+.symbol-btn.active-x{border-color:var(--x);background:rgba(255,71,87,.12);color:var(--x)}
+.symbol-btn.active-o{border-color:var(--o);background:rgba(46,213,115,.12);color:var(--o)}
+.symbol-btn:not(.active-x):not(.active-o):hover{border-color:var(--muted)}
+/* First player picker */
+.first-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.first-btn{padding:12px 8px;border-radius:10px;border:2px solid var(--border);background:#16161f;cursor:pointer;transition:all .18s;text-align:center;font-size:.75rem;font-family:'Space Mono',monospace}
+.first-btn.active{border-color:var(--accent);background:rgba(255,215,0,.08);color:var(--accent);font-weight:700}
+/* Round indicator */
+.round-indicator{text-align:center;font-size:.65rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:2px}
 @media(max-width:380px){.btn{font-size:.72rem;padding:11px}.score-num{font-size:1.2rem}}
 `;
 
@@ -297,6 +333,23 @@ export default function App() {
   const [gameChatMsgs, setGameChatMsgs] = useState([]);
   const [gameChatInput, setGameChatInput] = useState("");
   const [showGameChat, setShowGameChat] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [welcomeName, setWelcomeName] = useState("");
+  // Game setup
+  const [setupMode, setSetupMode] = useState("local");
+  const [p1Name, setP1Name] = useState("");
+  const [p2Name, setP2Name] = useState("");
+  const [p1Symbol, setP1Symbol] = useState("X");
+  const [firstPlayer, setFirstPlayer] = useState("p1");
+  const [roundStarter, setRoundStarter] = useState("p1");
+  // Chat popup & voice notes
+  const [chatPopup, setChatPopup] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const gameChatEndRef = useRef(null);
 
   const resultHandledRef = useRef(false);
   const unsubRoomRef = useRef(null);
@@ -489,6 +542,8 @@ export default function App() {
       await updateProfile(cred.user, {displayName:username});
       await setDoc(doc(db,"users",cred.user.uid), {username,email,photoURL:null,createdAt:Date.now()});
       setAuthForm({email:"",username:"",password:"",confirm:""});
+      setWelcomeName(username);
+      setShowWelcome(true);
     } catch(e) {
       setAuthError(e.code==="auth/email-already-in-use"?"Email already registered.":e.code==="auth/weak-password"?"Password too weak.":e.message);
     }
@@ -640,11 +695,67 @@ export default function App() {
     });
   };
 
-  const sendGameChat = async (text) => {
-    if(!text.trim()) return;
+  const sendGameChat = async (text, isVoice=false, audioBase64=null) => {
+    if(!isVoice && !text.trim()) return;
     const {collection,addDoc,serverTimestamp} = window._fb;
-    await addDoc(collection(db,`rooms/${onlineRoom}/chat`),{text:text.trim(),uid:authUser.uid,username:authUser.username,createdAt:serverTimestamp()});
-    setGameChatInput("");
+    const msgData = {
+      uid:authUser.uid, username:authUser.username,
+      createdAt:serverTimestamp(),
+      isVoice: isVoice||false,
+      text: isVoice ? "🎙️ Voice note" : text.trim(),
+      audioBase64: audioBase64||null,
+    };
+    await addDoc(collection(db,`rooms/${onlineRoom}/chat`), msgData);
+    if(!isVoice) setGameChatInput("");
+    setTimeout(()=>gameChatEndRef.current?.scrollIntoView({behavior:"smooth"}),100);
+  };
+
+  // Show popup for opponent messages
+  useEffect(()=>{
+    if(gameChatMsgs.length===0) return;
+    const last = gameChatMsgs[gameChatMsgs.length-1];
+    if(last.uid!==authUser?.uid) {
+      setChatPopup({text:last.text, username:last.username, isVoice:last.isVoice, audioBase64:last.audioBase64});
+      setTimeout(()=>setChatPopup(null), 4000);
+    }
+  },[gameChatMsgs]);
+
+  // Voice recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = e => audioChunksRef.current.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, {type:"audio/webm"});
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          await sendGameChat("", true, ev.target.result);
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(t=>t.stop());
+        clearInterval(recordingTimerRef.current);
+        setRecordingTime(0);
+      };
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(()=>setRecordingTime(t=>t+1), 1000);
+    } catch(e) { alert("Microphone access denied. Please allow microphone in browser settings."); }
+  };
+
+  const stopRecording = () => {
+    if(mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const playAudio = (base64) => {
+    const audio = new Audio(base64);
+    audio.play();
   };
 
   // ── AI ──────────────────────────────────────────────────────────────────────
@@ -671,8 +782,18 @@ export default function App() {
   },[board,turn,result,mode,onlineRole,onlineRoom,moveLog,players,waitingForOpponent]);
 
   const resetGame = async () => {
-    setBoard(Array(9).fill(null)); setTurn("X"); setResult(null); setWinLine(null); setMoveLog([]); resultHandledRef.current=false;
-    if(mode==="online"&&onlineRoom){const {doc,updateDoc}=window._fb;await updateDoc(doc(db,"rooms",onlineRoom),{board:Array(9).fill(null),turn:"X",moveLog:[],result:null,winLine:null});}
+    // Switch who starts next round
+    const nextStarter = roundStarter==="p1"?"p2":"p1";
+    setRoundStarter(nextStarter);
+    const p1IsX = p1Symbol==="X";
+    const p1GoesFirst = nextStarter==="p1";
+    const nextTurn = p1GoesFirst ? (p1IsX?"X":"O") : (p1IsX?"O":"X");
+    setBoard(Array(9).fill(null)); setTurn(mode==="online"?"X":nextTurn);
+    setResult(null); setWinLine(null); setMoveLog([]); resultHandledRef.current=false;
+    if(mode==="online"&&onlineRoom){
+      const {doc,updateDoc}=window._fb;
+      await updateDoc(doc(db,"rooms",onlineRoom),{board:Array(9).fill(null),turn:"X",moveLog:[],result:null,winLine:null});
+    }
   };
 
   const goHome = () => {
@@ -684,9 +805,27 @@ export default function App() {
   };
 
   const startLocalGame = (m) => {
-    setMode(m); setPlayers({X:authUser.username,O:m==="ai"?"AI Bot 🤖":"Player O"});
-    setBoard(Array(9).fill(null)); setTurn("X"); setResult(null); setWinLine(null); setMoveLog([]);
-    setScores({X:0,O:0,draw:0}); resultHandledRef.current=false; setScreen("game");
+    setSetupMode(m);
+    setP1Name(authUser.username);
+    setP2Name(m==="ai"?"AI Bot 🤖":"");
+    setP1Symbol("X");
+    setFirstPlayer("p1");
+    setScreen("game-setup");
+  };
+
+  const beginGame = () => {
+    const p1IsX = p1Symbol==="X";
+    const xName = p1IsX ? (p1Name||authUser.username) : (p2Name||(setupMode==="ai"?"AI Bot 🤖":"Player 2"));
+    const oName = p1IsX ? (p2Name||(setupMode==="ai"?"AI Bot 🤖":"Player 2")) : (p1Name||authUser.username);
+    setMode(setupMode);
+    setPlayers({X:xName, O:oName});
+    // Who goes first
+    const p1GoesFirst = firstPlayer==="p1";
+    const firstTurn = p1GoesFirst ? (p1IsX?"X":"O") : (p1IsX?"O":"X");
+    setBoard(Array(9).fill(null)); setTurn(firstTurn); setResult(null); setWinLine(null); setMoveLog([]);
+    setScores({X:0,O:0,draw:0}); resultHandledRef.current=false;
+    setRoundStarter(firstPlayer);
+    setScreen("game");
   };
 
   const cellClass=(i)=>{let c="cell";if(board[i])c+=` filled ${board[i]==="X"?"x-cell":"o-cell"}`;if(winLine?.includes(i))c+=" win-cell";if(animCell===i)c+=" anim";return c;};
@@ -735,6 +874,29 @@ export default function App() {
     </div></>
   );
 
+  // ── WELCOME SCREEN ───────────────────────────────────────────────────────────
+  if(showWelcome) return(
+    <><style>{CSS}</style>
+    <div className="welcome-overlay">
+      <div className="welcome-box">
+        <div className="welcome-emoji">🎉</div>
+        <div className="welcome-title">Welcome to FavsTicTac Lovers!</div>
+        <div className="welcome-msg">
+          Hello <span className="welcome-name">{welcomeName}</span>! 👋<br/><br/>
+          Welcome to <span className="welcome-name">Adepoju Favour Emmanuel's</span> Tic Tac Toe game —<br/>
+          <span style={{color:"var(--o)",fontWeight:700}}>one of the best paper games you will ever see on your screen!</span> 🏆<br/><br/>
+          Play locally, challenge the AI, or compete with friends online. Your journey to becoming a Tic Tac Toe legend starts now! 🎮
+        </div>
+        <div style={{display:"flex",gap:10,marginBottom:16,justifyContent:"center",fontSize:"1.5rem"}}>
+          {"🎮🏆🔥⚡👑".split("").map((e,i)=><span key={i} style={{animation:`bounce ${0.8+i*0.15}s ease infinite alternate`}}>{e}</span>)}
+        </div>
+        <button className="btn btn-primary" onClick={()=>setShowWelcome(false)}>
+          🚀 Let's Play!
+        </button>
+      </div>
+    </div></>
+  );
+
   // ── AUTH ─────────────────────────────────────────────────────────────────────
   if(!authUser) return(
     <><style>{CSS}</style>
@@ -774,6 +936,67 @@ export default function App() {
         <div style={{color:"var(--muted)",fontSize:".68rem",textAlign:"center"}}>Your <span style={{color:"var(--accent)"}}>FavsTicTac Lovers</span> account works on all devices.</div>
       </div>
     </div></>
+  );
+
+  // ── GAME SETUP ────────────────────────────────────────────────────────────────
+  if(screen==="game-setup") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
+      <TopBar backTo="home"/>
+      <div style={{textAlign:"center",marginBottom:16}}><Logo small/>
+        <div className="tagline">{setupMode==="ai"?"🤖 vs AI Setup":"🎮 Local 2-Player Setup"}</div>
+      </div>
+      <div className="card gap">
+
+        {/* Player 1 Name */}
+        <div className="field">
+          <div className="label">👤 Player 1 Name</div>
+          <input className="input" placeholder={authUser.username} value={p1Name} onChange={e=>setP1Name(e.target.value)}/>
+        </div>
+
+        {/* Player 2 Name — only for local */}
+        {setupMode==="local"&&(
+          <div className="field">
+            <div className="label">👤 Player 2 Name</div>
+            <input className="input" placeholder="Player 2" value={p2Name} onChange={e=>setP2Name(e.target.value)}/>
+          </div>
+        )}
+
+        {/* Choose Symbol — only once at beginning */}
+        <div className="field">
+          <div className="label">🎯 Player 1 plays as (set once)</div>
+          <div className="symbol-pick">
+            <button className={`symbol-btn ${p1Symbol==="X"?"active-x":""}`} onClick={()=>setP1Symbol("X")}>
+              ✕<div style={{fontSize:".65rem",fontFamily:"'Space Mono',monospace",marginTop:4,color:p1Symbol==="X"?"var(--x)":"var(--muted)"}}>Play as X</div>
+            </button>
+            <button className={`symbol-btn ${p1Symbol==="O"?"active-o":""}`} onClick={()=>setP1Symbol("O")}>
+              ○<div style={{fontSize:".65rem",fontFamily:"'Space Mono',monospace",marginTop:4,color:p1Symbol==="O"?"var(--o)":"var(--muted)"}}>Play as O</div>
+            </button>
+          </div>
+        </div>
+
+        {/* Who goes first — only for first round */}
+        <div className="field">
+          <div className="label">⚡ Who goes first? (1st round only)</div>
+          <div className="first-pick">
+            <button className={`first-btn ${firstPlayer==="p1"?"active":""}`} onClick={()=>setFirstPlayer("p1")}>
+              👤 {p1Name||authUser.username||"Player 1"}<br/>
+              <span style={{fontSize:".6rem",opacity:.7}}>goes first</span>
+            </button>
+            <button className={`first-btn ${firstPlayer==="p2"?"active":""}`} onClick={()=>setFirstPlayer("p2")}>
+              👤 {p2Name||(setupMode==="ai"?"AI Bot":"Player 2")}<br/>
+              <span style={{fontSize:".6rem",opacity:.7}}>goes first</span>
+            </button>
+          </div>
+          <div style={{fontSize:".65rem",color:"var(--muted)",textAlign:"center",marginTop:4}}>
+            🔄 After each round, turns automatically swap
+          </div>
+        </div>
+
+        <button className="btn btn-primary" onClick={beginGame}>▶ Start Game</button>
+        <button className="btn btn-outline" onClick={()=>setScreen("home")}>← Back</button>
+      </div>
+    </div></div></>
   );
 
   // ── HOME ─────────────────────────────────────────────────────────────────────
@@ -837,11 +1060,31 @@ export default function App() {
           <div className="spinner" style={{width:28,height:28,margin:"0 auto"}}/>
         </div><button className="btn btn-outline" onClick={goHome} style={{marginTop:16}}>← Cancel</button></div>
       ):(<>
+        {/* Chat popup for opponent messages */}
+        {chatPopup&&(
+          <div className="chat-popup">
+            <div className="chat-popup-name">💬 {chatPopup.username}</div>
+            {chatPopup.isVoice && chatPopup.audioBase64
+              ? <button className="voice-msg-btn" onClick={()=>playAudio(chatPopup.audioBase64)}>▶ Play voice note 🎙️</button>
+              : <div className="chat-popup-text">{chatPopup.text}</div>
+            }
+          </div>
+        )}
         <div className="scoreboard">
           <div className={`score-box ${!result&&turn==="X"?"active":""}`}><div className="score-name">{players.X}</div><div className="score-num score-x">{scores.X}</div><div className="score-name" style={{color:"var(--x)"}}>X</div></div>
           <div style={{textAlign:"center"}}><div style={{color:"var(--muted)",fontSize:".65rem"}}>VS</div><div style={{color:"var(--accent)",fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1rem"}}>{scores.draw}</div><div style={{color:"var(--muted)",fontSize:".6rem"}}>draws</div></div>
           <div className={`score-box ${!result&&turn==="O"?"active":""}`}><div className="score-name">{players.O}</div><div className="score-num score-o">{scores.O}</div><div className="score-name" style={{color:"var(--o)"}}>O</div></div>
         </div>
+        {mode!=="online"&&result&&(
+          <div className="round-indicator">
+            🔄 Next round: <span style={{color:"var(--accent)"}}>
+              {roundStarter==="p1"
+                ? (p2Name||(setupMode==="ai"?"AI Bot":"Player 2"))
+                : (p1Name||authUser.username)
+              } goes first
+            </span>
+          </div>
+        )}
         <div className="board">{board.map((v,i)=>(<div key={i} className={cellClass(i)} onClick={()=>handleCellClick(i)}>{v==="X"&&<XIcon/>}{v==="O"&&<OIcon/>}</div>))}</div>
         <div className={statusClass()}>{getStatus()}</div>
         <div className="row" style={{marginTop:10}}>
@@ -851,15 +1094,36 @@ export default function App() {
         </div>
         {mode==="online"&&showGameChat&&(
           <div className="game-chat">
-            <div className="game-chat-header">💬 Game Chat</div>
+            <div className="game-chat-header">
+              <span>💬 Game Chat</span>
+              {isRecording&&<span style={{color:"var(--x)",fontSize:".65rem"}}>🔴 {recordingTime}s recording…</span>}
+            </div>
             <div className="game-chat-msgs">
               {gameChatMsgs.length===0&&<div style={{color:"var(--muted)",fontSize:".68rem",textAlign:"center",padding:"8px 0"}}>Say hi! 👋</div>}
-              {gameChatMsgs.map(m=>(<div key={m.id} className="game-chat-msg"><span style={{color:m.uid===authUser.uid?"var(--accent)":"var(--o)",fontWeight:700,fontSize:".65rem"}}>{m.uid===authUser.uid?"You":m.username}: </span><span>{m.text}</span></div>))}
+              {gameChatMsgs.map(m=>(
+                <div key={m.id} className={`game-chat-msg ${m.uid===authUser.uid?"mine":"other"}`}>
+                  <span style={{color:m.uid===authUser.uid?"var(--accent)":"var(--o)",fontWeight:700,fontSize:".62rem"}}>{m.uid===authUser.uid?"You":m.username}: </span>
+                  {m.isVoice && m.audioBase64
+                    ? <button className="voice-msg-btn" onClick={()=>playAudio(m.audioBase64)}>▶ {m.uid===authUser.uid?"Your":"Opponent's"} voice note 🎙️</button>
+                    : <span>{m.text}</span>
+                  }
+                </div>
+              ))}
+              <div ref={gameChatEndRef}/>
             </div>
             <div className="emoji-row" style={{padding:"4px 8px"}}>{EMOJIS.map(e=>(<button key={e} className="emoji-btn" onClick={()=>sendGameChat(e)}>{e}</button>))}</div>
             <div className="game-chat-input">
-              <input className="input" style={{flex:1,padding:"8px 10px",fontSize:".75rem"}} placeholder="Message…" value={gameChatInput} onChange={e=>setGameChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendGameChat(gameChatInput)}/>
-              <button className="btn btn-primary btn-sm" onClick={()=>sendGameChat(gameChatInput)} disabled={!gameChatInput.trim()}>Send</button>
+              <input className="input" style={{flex:1,padding:"8px 10px",fontSize:".75rem"}} placeholder="Message…" value={gameChatInput} onChange={e=>setGameChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendGameChat(gameChatInput)} disabled={isRecording}/>
+              <button
+                className={`voice-btn ${isRecording?"recording":"idle"}`}
+                onMouseDown={startRecording} onMouseUp={stopRecording}
+                onTouchStart={e=>{e.preventDefault();startRecording();}} onTouchEnd={e=>{e.preventDefault();stopRecording();}}
+                title={isRecording?"Release to send":"Hold to record"}
+              >🎙️</button>
+              <button className="btn btn-primary btn-sm" onClick={()=>sendGameChat(gameChatInput)} disabled={!gameChatInput.trim()||isRecording}>Send</button>
+            </div>
+            <div style={{padding:"4px 8px 6px",fontSize:".6rem",color:"var(--muted)",textAlign:"center"}}>
+              Hold 🎙️ to record · Release to send
             </div>
           </div>
         )}
@@ -1153,11 +1417,340 @@ export default function App() {
         </div>
 
         <button className="btn btn-outline" onClick={()=>{loadMyHistory(authUser.uid);setScreen("history")}}>📜 View Game History</button>
+        {authUser.uid==="FeJCFJjq36XSLXvxbs7UIt7I9Oo1"&&(
+          <button className="btn btn-primary" onClick={()=>setScreen("admin")}>🎛️ Admin Dashboard</button>
+        )}
         <button className="btn btn-x" onClick={handleLogout}>🚪 Sign Out</button>
       </div>
       <BottomNav/>
     </div></div></>
   );
 
+  // ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
+  if(screen==="admin") return <AdminDashboard authUser={authUser} db={db} onBack={()=>setScreen("profile")}/>;
+
   return null;
+}
+
+// ── ADMIN DASHBOARD COMPONENT ─────────────────────────────────────────────────
+function AdminDashboard({authUser, db, onBack}) {
+  const ADMIN_UID = "FeJCFJjq36XSLXvxbs7UIt7I9Oo1";
+  const [tab, setTab] = useState("overview");
+  const [users, setUsers] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [totalGames, setTotalGames] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [searchUser, setSearchUser] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userHistory, setUserHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [actionMsg, setActionMsg] = useState("");
+
+  useEffect(()=>{ if(authUser.uid===ADMIN_UID) loadAll(); },[]);
+
+  const loadAll = async () => {
+    setLoading(true);
+    const {collection, getDocs, query, orderBy, limit} = window._fb;
+    try {
+      // Load all users
+      const usersSnap = await getDocs(collection(db,"users"));
+      const usersData = usersSnap.docs.map(d=>({uid:d.id,...d.data()}));
+      setUsers(usersData);
+      // Load leaderboard
+      const lbSnap = await getDocs(query(collection(db,"leaderboard"),orderBy("wins","desc"),limit(50)));
+      const lbData = lbSnap.docs.map(d=>({uid:d.id,...d.data()}));
+      setLeaderboard(lbData);
+      // Total games = sum of all games on leaderboard / 2 (each game counted twice)
+      const total = lbData.reduce((s,p)=>s+(p.games||0),0);
+      setTotalGames(Math.round(total/2));
+    } catch(e){ console.error(e); }
+    setLoading(false);
+  };
+
+  const loadUserHistory = async (uid) => {
+    setLoadingHistory(true);
+    const {collection, query, orderBy, limit, getDocs} = window._fb;
+    try {
+      const snap = await getDocs(query(collection(db,`users/${uid}/history`),orderBy("createdAt","desc"),limit(20)));
+      setUserHistory(snap.docs.map(d=>({id:d.id,...d.data()})));
+    } catch { setUserHistory([]); }
+    setLoadingHistory(false);
+  };
+
+  const filteredUsers = users.filter(u=>
+    u.username?.toLowerCase().includes(searchUser.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchUser.toLowerCase())
+  );
+
+  const totalWins = leaderboard.reduce((s,p)=>s+(p.wins||0),0);
+  const totalDraws = leaderboard.reduce((s,p)=>s+(p.draws||0),0);
+  const mostActive = [...leaderboard].sort((a,b)=>(b.games||0)-(a.games||0))[0];
+  const topPlayer = leaderboard[0];
+
+  // New users this week
+  const oneWeekAgo = Date.now() - 7*24*60*60*1000;
+  const newThisWeek = users.filter(u=>u.createdAt>oneWeekAgo).length;
+  const newToday = users.filter(u=>u.createdAt>Date.now()-24*60*60*1000).length;
+
+  const ACSS = `
+    .adm{min-height:100vh;background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;padding:0;
+      background:radial-gradient(ellipse at 15% 40%,#1a0828 0%,#08080f 55%)}
+    .adm-header{background:#111118;border-bottom:1px solid #22223a;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+    .adm-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:#ffd700}
+    .adm-tabs{display:flex;gap:4px;padding:12px 16px;overflow-x:auto;scrollbar-width:none}
+    .adm-tab{padding:7px 12px;border-radius:8px;border:1px solid #22223a;background:transparent;color:#5a5a7a;
+      font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer;white-space:nowrap;transition:all .18s;text-transform:uppercase;letter-spacing:1px}
+    .adm-tab.on{background:#ffd700;color:#08080f;border-color:#ffd700;font-weight:700}
+    .adm-body{padding:0 16px 80px}
+    .adm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .adm-stat{background:#111118;border:1px solid #22223a;border-radius:12px;padding:14px 12px;text-align:center}
+    .adm-stat-val{font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;line-height:1}
+    .adm-stat-lbl{font-size:.6rem;color:#5a5a7a;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+    .adm-section{margin-bottom:20px}
+    .adm-section-title{font-size:.65rem;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #22223a}
+    .adm-user-row{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;background:#111118;border:1px solid #22223a;margin-bottom:7px;cursor:pointer;transition:all .18s}
+    .adm-user-row:hover{border-color:#ffd700}
+    .adm-user-info{flex:1;overflow:hidden}
+    .adm-user-name{font-weight:700;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .adm-user-email{font-size:.65rem;color:#5a5a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .adm-badge{padding:3px 8px;border-radius:20px;font-size:.6rem;font-weight:700}
+    .adm-badge-gold{background:rgba(255,215,0,.15);color:#ffd700;border:1px solid rgba(255,215,0,.3)}
+    .adm-badge-green{background:rgba(46,213,115,.15);color:#2ed573;border:1px solid rgba(46,213,115,.3)}
+    .adm-badge-red{background:rgba(255,71,87,.15);color:#ff4757;border:1px solid rgba(255,71,87,.3)}
+    .adm-lb-row{display:grid;grid-template-columns:24px 1fr repeat(3,44px);gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid #22223a;font-size:.72rem}
+    .adm-input{width:100%;padding:10px 14px;background:#16161f;border:1px solid #22223a;border-radius:9px;color:#f0ede8;font-family:'Space Mono',monospace;font-size:.8rem;outline:none;margin-bottom:10px}
+    .adm-input:focus{border-color:#ffd700}
+    .adm-back{background:transparent;border:1px solid #22223a;color:#f0ede8;padding:8px 14px;border-radius:8px;font-family:'Space Mono',monospace;font-size:.72rem;cursor:pointer;transition:all .18s}
+    .adm-back:hover{border-color:#ffd700;color:#ffd700}
+    .adm-profile-card{background:#111118;border:1px solid #22223a;border-radius:14px;padding:16px;margin-bottom:14px}
+    .adm-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a0828,#0a1a10);border:2px solid #ffd700;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;overflow:hidden;flex-shrink:0}
+    .adm-avatar img{width:100%;height:100%;object-fit:cover}
+    .adm-hist-item{padding:9px;border-radius:8px;background:#16161f;margin-bottom:6px;font-size:.7rem}
+  `;
+
+  if(authUser.uid!==ADMIN_UID) return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#08080f",color:"#ff4757",fontFamily:"monospace",textAlign:"center",padding:20}}>
+      <div><div style={{fontSize:"3rem"}}>🚫</div><div style={{marginTop:10,fontSize:".9rem"}}>Access Denied.<br/>Admins only.</div>
+        <button onClick={onBack} style={{marginTop:16,background:"transparent",border:"1px solid #22223a",color:"#f0ede8",padding:"8px 16px",borderRadius:8,cursor:"pointer",fontFamily:"monospace"}}>← Go Back</button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="adm">
+      <style>{ACSS}</style>
+      {/* Header */}
+      <div className="adm-header">
+        <div>
+          <div className="adm-title">🎛️ Admin Dashboard</div>
+          <div style={{fontSize:".6rem",color:"#5a5a7a",marginTop:2}}>FavsTicTac Lovers · Welcome, {authUser.username}</div>
+        </div>
+        <button className="adm-back" onClick={onBack}>← Back</button>
+      </div>
+
+      {/* Tabs */}
+      <div className="adm-tabs">
+        {[["📊","overview","Overview"],["👥","users","Users"],["🏆","leaderboard","Leaderboard"],["📈","stats","Stats"]].map(([icon,t,label])=>(
+          <button key={t} className={`adm-tab ${tab===t?"on":""}`} onClick={()=>setTab(t)}>{icon} {label}</button>
+        ))}
+      </div>
+
+      <div className="adm-body">
+        {loading&&<div style={{textAlign:"center",padding:"40px 0",color:"#5a5a7a"}}>
+          <div style={{width:28,height:28,border:"2px solid #22223a",borderTopColor:"#ffd700",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 10px"}}/>
+          Loading data…
+        </div>}
+
+        {/* ── OVERVIEW ── */}
+        {!loading&&tab==="overview"&&(<>
+          <div className="adm-grid">
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{users.length}</div><div className="adm-stat-lbl">👥 Total Users</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{totalGames}</div><div className="adm-stat-lbl">🎮 Total Games</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ff4757"}}>{newToday}</div><div className="adm-stat-lbl">🆕 New Today</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#a29bfe"}}>{newThisWeek}</div><div className="adm-stat-lbl">📅 New This Week</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{totalWins}</div><div className="adm-stat-lbl">🏆 Total Wins</div></div>
+            <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{totalDraws}</div><div className="adm-stat-lbl">🤝 Total Draws</div></div>
+          </div>
+
+          {topPlayer&&(<div className="adm-section">
+            <div className="adm-section-title">🥇 Top Player</div>
+            <div className="adm-user-row">
+              <div className="adm-avatar">{topPlayer.photoURL?<img src={topPlayer.photoURL} alt=""/>:topPlayer.username?.slice(0,2).toUpperCase()}</div>
+              <div className="adm-user-info">
+                <div className="adm-user-name">👑 {topPlayer.username}</div>
+                <div className="adm-user-email">{topPlayer.wins} wins · {topPlayer.games} games</div>
+              </div>
+              <div className="adm-badge adm-badge-gold">#1</div>
+            </div>
+          </div>)}
+
+          {mostActive&&mostActive.username!==topPlayer?.username&&(<div className="adm-section">
+            <div className="adm-section-title">🔥 Most Active Player</div>
+            <div className="adm-user-row">
+              <div className="adm-avatar">{mostActive.photoURL?<img src={mostActive.photoURL} alt=""/>:mostActive.username?.slice(0,2).toUpperCase()}</div>
+              <div className="adm-user-info">
+                <div className="adm-user-name">🔥 {mostActive.username}</div>
+                <div className="adm-user-email">{mostActive.games} games played</div>
+              </div>
+              <div className="adm-badge adm-badge-green">{mostActive.games} games</div>
+            </div>
+          </div>)}
+
+          <div className="adm-section">
+            <div className="adm-section-title">🕐 Recent Registrations</div>
+            {[...users].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,5).map(u=>(
+              <div key={u.uid} className="adm-user-row" onClick={()=>{setSelectedUser(u);loadUserHistory(u.uid);setTab("users");}}>
+                <div className="adm-avatar">{u.photoURL?<img src={u.photoURL} alt=""/>:u.username?.slice(0,2).toUpperCase()}</div>
+                <div className="adm-user-info">
+                  <div className="adm-user-name">{u.username}</div>
+                  <div className="adm-user-email">{u.email}</div>
+                </div>
+                <div className="adm-badge adm-badge-green">New</div>
+              </div>
+            ))}
+          </div>
+        </>)}
+
+        {/* ── USERS ── */}
+        {!loading&&tab==="users"&&(<>
+          {selectedUser?(
+            <div>
+              <button className="adm-back" style={{marginBottom:14}} onClick={()=>{setSelectedUser(null);setUserHistory([]);}}>← All Users</button>
+              <div className="adm-profile-card">
+                <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+                  <div className="adm-avatar" style={{width:56,height:56,fontSize:"1.2rem"}}>{selectedUser.photoURL?<img src={selectedUser.photoURL} alt=""/>:selectedUser.username?.slice(0,2).toUpperCase()}</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:".9rem"}}>{selectedUser.username}</div>
+                    <div style={{fontSize:".68rem",color:"#5a5a7a",marginTop:2}}>{selectedUser.email}</div>
+                    {selectedUser.uid===ADMIN_UID&&<div className="adm-badge adm-badge-gold" style={{display:"inline-block",marginTop:4}}>👑 Admin</div>}
+                  </div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,fontSize:".7rem"}}>
+                  {[["User ID",selectedUser.uid?.slice(0,20)+"…"],["Joined",selectedUser.createdAt?new Date(selectedUser.createdAt).toLocaleDateString():"Unknown"],
+                    ["Has Photo",selectedUser.photoURL?"✅ Yes":"❌ No"]].map(([k,v])=>(
+                    <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #22223a"}}>
+                      <span style={{color:"#5a5a7a"}}>{k}</span><span style={{fontWeight:700,textAlign:"right",maxWidth:"60%",wordBreak:"break-all"}}>{v}</span>
+                    </div>
+                  ))}
+                  {(()=>{const lb=leaderboard.find(p=>p.uid===selectedUser.uid||p.username===selectedUser.username);return lb?(
+                    <>
+                      {[["🏆 Wins",lb.wins||0],["🤝 Draws",lb.draws||0],["🎮 Games",lb.games||0]].map(([k,v])=>(
+                        <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #22223a"}}>
+                          <span style={{color:"#5a5a7a"}}>{k}</span><span style={{fontWeight:700,color:"#ffd700"}}>{v}</span>
+                        </div>
+                      ))}
+                      <div style={{display:"flex",justifyContent:"space-between",padding:"6px 0"}}>
+                        <span style={{color:"#5a5a7a"}}>🥇 Rank</span>
+                        <span style={{fontWeight:700,color:"#ffd700"}}>#{leaderboard.findIndex(p=>p.username===selectedUser.username)+1}</span>
+                      </div>
+                    </>
+                  ):null})()}
+                </div>
+              </div>
+
+              <div className="adm-section-title">📜 Game History ({userHistory.length})</div>
+              {loadingHistory&&<div style={{color:"#5a5a7a",fontSize:".75rem",textAlign:"center",padding:"12px 0"}}>Loading…</div>}
+              {!loadingHistory&&userHistory.length===0&&<div style={{color:"#5a5a7a",fontSize:".75rem",textAlign:"center",padding:"12px 0"}}>No games played yet.</div>}
+              {userHistory.map(g=>(
+                <div key={g.id} className="adm-hist-item">
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontWeight:700,color:g.winner==="Draw"?"#ffd700":g.winner===selectedUser.username?"#2ed573":"#ff4757"}}>
+                      {g.winner==="Draw"?"🤝 Draw":g.winner===selectedUser.username?"🏆 Won":"💀 Lost"}
+                    </span>
+                    <span style={{color:"#5a5a7a",fontSize:".62rem"}}>{g.mode}</span>
+                  </div>
+                  <div style={{color:"#5a5a7a",fontSize:".65rem"}}>{g.players?.X} X vs {g.players?.O} O · {g.moves} moves</div>
+                </div>
+              ))}
+            </div>
+          ):(
+            <>
+              <input className="adm-input" placeholder="🔍 Search by username or email…" value={searchUser} onChange={e=>setSearchUser(e.target.value)}/>
+              <div style={{color:"#5a5a7a",fontSize:".65rem",marginBottom:10}}>{filteredUsers.length} of {users.length} users</div>
+              {filteredUsers.map(u=>(
+                <div key={u.uid} className="adm-user-row" onClick={()=>{setSelectedUser(u);loadUserHistory(u.uid);}}>
+                  <div className="adm-avatar">{u.photoURL?<img src={u.photoURL} alt=""/>:u.username?.slice(0,2).toUpperCase()}</div>
+                  <div className="adm-user-info">
+                    <div className="adm-user-name">{u.username} {u.uid===ADMIN_UID&&"👑"}</div>
+                    <div className="adm-user-email">{u.email}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:".6rem",color:"#5a5a7a"}}>{u.createdAt?new Date(u.createdAt).toLocaleDateString():"—"}</div>
+                    {(()=>{const lb=leaderboard.find(p=>p.username===u.username);return lb?<div style={{fontSize:".65rem",color:"#2ed573",marginTop:2}}>{lb.wins||0}W · {lb.games||0}G</div>:null})()}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </>)}
+
+        {/* ── LEADERBOARD ── */}
+        {!loading&&tab==="leaderboard"&&(<>
+          <div style={{display:"grid",gridTemplateColumns:"22px 1fr repeat(3,44px)",gap:6,padding:"6px 0",borderBottom:"1px solid #22223a",fontSize:".6rem",color:"#5a5a7a",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>
+            <span>#</span><span>Player</span><span style={{textAlign:"center"}}>W</span><span style={{textAlign:"center"}}>D</span><span style={{textAlign:"center"}}>G</span>
+          </div>
+          {leaderboard.map((p,i)=>(
+            <div key={p.uid} className="adm-lb-row" style={{cursor:"pointer",background:p.username===authUser.username?"rgba(255,215,0,.04)":"transparent"}}
+              onClick={()=>{const u=users.find(u=>u.username===p.username);if(u){setSelectedUser(u);loadUserHistory(u.uid);setTab("users");}}}>
+              <span style={{fontWeight:700,color:i===0?"#ffd700":i===1?"#c0c0c0":i===2?"#cd7f32":"#5a5a7a"}}>{i+1}</span>
+              <span style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:p.username===authUser.username?"#ffd700":"#f0ede8"}}>{p.username}{p.username===authUser.username?" 👑":""}</span>
+              <span style={{textAlign:"center",color:"#2ed573"}}>{p.wins||0}</span>
+              <span style={{textAlign:"center",color:"#ffd700"}}>{p.draws||0}</span>
+              <span style={{textAlign:"center",color:"#5a5a7a"}}>{p.games||0}</span>
+            </div>
+          ))}
+          {leaderboard.length===0&&<div style={{textAlign:"center",color:"#5a5a7a",padding:"28px 0",fontSize:".78rem"}}>No games played yet.</div>}
+        </>)}
+
+        {/* ── STATS ── */}
+        {!loading&&tab==="stats"&&(<>
+          <div className="adm-section">
+            <div className="adm-section-title">📊 Game Statistics</div>
+            <div className="adm-grid">
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{totalWins}</div><div className="adm-stat-lbl">Total Wins</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{totalDraws}</div><div className="adm-stat-lbl">Total Draws</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ff4757"}}>{totalGames}</div><div className="adm-stat-lbl">Total Games</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#a29bfe"}}>{leaderboard.length}</div><div className="adm-stat-lbl">Active Players</div></div>
+            </div>
+          </div>
+
+          <div className="adm-section">
+            <div className="adm-section-title">👥 User Statistics</div>
+            <div className="adm-grid">
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{users.length}</div><div className="adm-stat-lbl">Total Registered</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{newToday}</div><div className="adm-stat-lbl">Joined Today</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#a29bfe"}}>{newThisWeek}</div><div className="adm-stat-lbl">This Week</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#fd79a8"}}>{users.filter(u=>u.photoURL).length}</div><div className="adm-stat-lbl">Have Photo</div></div>
+            </div>
+          </div>
+
+          <div className="adm-section">
+            <div className="adm-section-title">🏆 Top 3 Players</div>
+            {leaderboard.slice(0,3).map((p,i)=>(
+              <div key={p.uid} className="adm-user-row">
+                <div style={{fontSize:"1.5rem"}}>{["🥇","🥈","🥉"][i]}</div>
+                <div className="adm-avatar">{p.photoURL?<img src={p.photoURL} alt=""/>:p.username?.slice(0,2).toUpperCase()}</div>
+                <div className="adm-user-info">
+                  <div className="adm-user-name">{p.username}</div>
+                  <div className="adm-user-email">{p.wins} wins · {p.draws} draws · {p.games} games</div>
+                </div>
+                <div className="adm-badge adm-badge-gold">Win rate: {p.games?Math.round((p.wins/p.games)*100):0}%</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="adm-section">
+            <div className="adm-section-title">📋 App Info</div>
+            <div style={{background:"#111118",borderRadius:10,padding:12,border:"1px solid #22223a",fontSize:".7rem",display:"flex",flexDirection:"column",gap:8}}>
+              {[["App Name","FavsTicTac Lovers"],["Owner","Adepoju Favour Emmanuel"],["Platform","Netlify"],["Database","Firebase Firestore"],["Auth","Firebase Auth"],["Version","2.0.0"]].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",paddingBottom:6,borderBottom:"1px solid #22223a"}}>
+                  <span style={{color:"#5a5a7a"}}>{k}</span><span style={{fontWeight:700,color:"#ffd700"}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>)}
+      </div>
+    </div>
+  );
 }
