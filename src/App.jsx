@@ -1159,5 +1159,56 @@ export default function App() {
     </div></div></>
   );
 
-  return null;
+            {leaderboard.length===0&&<div style={{textAlign:"center",color:"#5a5a7a",padding:"28px 0",fontSize:".78rem"}}>No games played yet.</div>}
+        </>)}
+
+        {/* ── STATS ── */}
+        {!loading&&tab==="stats"&&(<>
+          <div className="adm-section">
+            <div className="adm-section-title">📊 Game Statistics</div>
+            <div className="adm-grid">
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{totalWins}</div><div className="adm-stat-lbl">Total Wins</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{totalDraws}</div><div className="adm-stat-lbl">Total Draws</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ff4757"}}>{totalGames}</div><div className="adm-stat-lbl">Total Games</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#a29bfe"}}>{leaderboard.length}</div><div className="adm-stat-lbl">Active Players</div></div>
+            </div>
+          </div>
+          <div className="adm-section">
+            <div className="adm-section-title">👥 User Statistics</div>
+            <div className="adm-grid">
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#ffd700"}}>{users.length}</div><div className="adm-stat-lbl">Total Registered</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{newToday}</div><div className="adm-stat-lbl">Joined Today</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#a29bfe"}}>{newThisWeek}</div><div className="adm-stat-lbl">This Week</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#fd79a8"}}>{users.filter(u=>u.photoURL).length}</div><div className="adm-stat-lbl">Have Photo</div></div>
+            </div>
+          </div>
+          <div className="adm-section">
+            <div className="adm-section-title">🏆 Top 3 Players</div>
+            {leaderboard.slice(0,3).map((p,i)=>(
+              <div key={p.uid} className="adm-user-row">
+                <div style={{fontSize:"1.5rem"}}>{["🥇","🥈","🥉"][i]}</div>
+                <div className="adm-avatar">{p.photoURL?<img src={p.photoURL} alt=""/>:p.username?.slice(0,2).toUpperCase()}</div>
+                <div className="adm-user-info">
+                  <div className="adm-user-name">{p.username}</div>
+                  <div className="adm-user-email">{p.wins} wins · {p.draws} draws · {p.games} games</div>
+                </div>
+                <div className="adm-badge adm-badge-gold">Win rate: {p.games?Math.round((p.wins/p.games)*100):0}%</div>
+              </div>
+            ))}
+          </div>
+          <div className="adm-section">
+            <div className="adm-section-title">📋 App Info</div>
+            <div style={{background:"#111118",borderRadius:10,padding:12,border:"1px solid #22223a",fontSize:".7rem",display:"flex",flexDirection:"column",gap:8}}>
+              {[["App Name","FavsTicTac Lovers"],["Owner","Adepoju Favour Emmanuel"],["Platform","Netlify"],["Database","Firebase Firestore"],["Auth","Firebase Auth"],["Version","2.0.0"]].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",paddingBottom:6,borderBottom:"1px solid #22223a"}}>
+                  <span style={{color:"#5a5a7a"}}>{k}</span><span style={{fontWeight:700,color:"#ffd700"}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>)}
+      </div>
+    </div>
+  );
 }
+
