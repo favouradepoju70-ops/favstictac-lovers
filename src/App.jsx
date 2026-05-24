@@ -21,7 +21,7 @@ async function initFirebase() {
             updateEmail, EmailAuthProvider, reauthenticateWithCredential } =
       await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
     const { getFirestore, doc, setDoc, getDoc, updateDoc, collection,
-            query, orderBy, limit, getDocs, onSnapshot, serverTimestamp, addDoc, deleteDoc } =
+            query, orderBy, limit, getDocs, onSnapshot, serverTimestamp, addDoc, where } =
       await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
     const { getStorage, ref, uploadString, getDownloadURL } =
       await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
@@ -37,7 +37,7 @@ async function initFirebase() {
       onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail,
       updateEmail, EmailAuthProvider, reauthenticateWithCredential,
       doc, setDoc, getDoc, updateDoc, collection,
-      query, orderBy, limit, getDocs, onSnapshot, serverTimestamp, addDoc, deleteDoc,
+      query, orderBy, limit, getDocs, onSnapshot, serverTimestamp, addDoc, where,
       ref, uploadString, getDownloadURL,
     };
     firebaseReady = true;
@@ -61,7 +61,7 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-height:100vh}
-:root{--x:#ff4757;--o:#2ed573;--bg:#08080f;--card:#111118;--border:#22223a;--accent:#ffd700;--muted:#5a5a7a;--success:#2ed573;--error:#ff4757}
+:root{--x:#ff4757;--o:#2ed573;--card:#111118;--border:#22223a;--accent:#ffd700;--muted:#5a5a7a;--success:#2ed573;--error:#ff4757}
 .app{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;
   background:radial-gradient(ellipse at 15% 40%,#1a0828 0%,#08080f 55%),radial-gradient(ellipse at 85% 60%,#0a1a10 0%,transparent 50%)}
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.5rem,6vw,2.4rem);letter-spacing:-1px;line-height:1}
@@ -69,7 +69,7 @@ body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-hei
 .logo .lm{color:var(--muted);font-size:.55em;vertical-align:middle;margin:0 2px}
 .logo .lovers{color:#f0ede8;font-size:.35em;font-weight:400;letter-spacing:3px;text-transform:uppercase;vertical-align:middle;margin-left:4px;opacity:.6}
 .tagline{color:var(--muted);font-size:.65rem;margin-top:5px;letter-spacing:3px;text-transform:uppercase}
-.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:clamp(16px,4vw,28px);width:100%;max-width:400px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:clamp(16px,4vw,28px);width:100%;max-width:420px}
 .gap{display:flex;flex-direction:column;gap:10px}
 .row{display:flex;gap:8px}
 .field{display:flex;flex-direction:column;gap:5px}
@@ -95,30 +95,34 @@ body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-hei
 .alert-success{background:rgba(46,213,115,.1);border:1px solid rgba(46,213,115,.3);color:var(--success)}
 .alert-info{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);color:var(--accent)}
 /* Avatar */
-.avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;background:linear-gradient(135deg,#1a0828,#0a1a10);
   border:2px solid var(--border);flex-shrink:0;overflow:hidden}
 .avatar img{width:100%;height:100%;object-fit:cover}
 .avatar-lg{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;background:linear-gradient(135deg,#1a0828,#0a1a10);
-  border:3px solid var(--accent);overflow:hidden;cursor:pointer;position:relative}
+  border:3px solid var(--accent);overflow:hidden;cursor:pointer;position:relative;margin:0 auto}
 .avatar-lg img{width:100%;height:100%;object-fit:cover}
 .avatar-edit{position:absolute;bottom:0;right:0;background:var(--accent);color:#08080f;border-radius:50%;
-  width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700}
+  width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.7rem}
+.avatar-md{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;background:linear-gradient(135deg,#1a0828,#0a1a10);
+  border:2px solid var(--border);flex-shrink:0;overflow:hidden}
+.avatar-md img{width:100%;height:100%;object-fit:cover}
 /* Topbar */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
   background:rgba(17,17,24,.95);border-bottom:1px solid var(--border);border-radius:14px 14px 0 0;margin-bottom:16px;
   position:sticky;top:0;z-index:10;backdrop-filter:blur(8px)}
-.topbar-name{font-size:.75rem;font-weight:700;color:#f0ede8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
+.topbar-name{font-size:.75rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
 .topbar-email{font-size:.6rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
 /* Bottom nav */
-.bottom-nav{display:flex;gap:0;background:rgba(17,17,24,.98);border-top:1px solid var(--border);
-  border-radius:0 0 14px 14px;margin-top:16px;overflow:hidden}
+.bottom-nav{display:flex;background:rgba(17,17,24,.98);border-top:1px solid var(--border);border-radius:0 0 14px 14px;margin-top:16px}
 .nav-item{flex:1;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;
-  background:none;border:none;color:var(--muted);font-family:'Space Mono',monospace;font-size:.55rem;
-  cursor:pointer;transition:all .18s;text-transform:uppercase;letter-spacing:1px}
-.nav-item.active{color:var(--accent)}.nav-item:hover{color:#f0ede8}
-.nav-icon{font-size:1.1rem}
+  background:none;border:none;color:var(--muted);font-family:'Space Mono',monospace;font-size:.52rem;
+  cursor:pointer;transition:all .18s;text-transform:uppercase;letter-spacing:1px;position:relative}
+.nav-item.active{color:var(--accent)}
+.nav-badge{position:absolute;top:6px;right:calc(50% - 14px);background:var(--error);color:#fff;border-radius:50%;
+  width:16px;height:16px;font-size:.55rem;display:flex;align-items:center;justify-content:center;font-weight:700}
 /* Scoreboard */
 .scoreboard{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:14px}
 .score-box{background:#16161f;border-radius:10px;padding:10px 8px;text-align:center;border:1px solid var(--border);transition:all .2s}
@@ -144,28 +148,43 @@ body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-hei
 .status.win-x{border-color:var(--x);color:var(--x);background:rgba(255,71,87,.08)}
 .status.win-o{border-color:var(--o);color:var(--o);background:rgba(46,213,115,.08)}
 .status.draw{border-color:var(--accent);color:var(--accent);background:rgba(255,215,0,.05)}
-/* Chat */
-.chat-container{display:flex;flex-direction:column;height:100%;max-height:500px}
-.chat-messages{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px;
-  scrollbar-width:thin;scrollbar-color:var(--border) transparent;min-height:300px;max-height:380px}
-.chat-msg{display:flex;gap:8px;align-items:flex-start}
+/* Private chat */
+.chat-screen{display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:400px}
+.chat-messages{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin}
+.chat-msg{display:flex;gap:8px;align-items:flex-end}
 .chat-msg.mine{flex-direction:row-reverse}
-.chat-bubble{padding:8px 12px;border-radius:12px;font-size:.75rem;max-width:75%;line-height:1.5;word-break:break-word}
-.chat-bubble.mine{background:var(--accent);color:#08080f;border-radius:12px 12px 2px 12px}
-.chat-bubble.other{background:#16161f;border:1px solid var(--border);border-radius:12px 12px 12px 2px}
-.chat-name{font-size:.6rem;color:var(--muted);margin-bottom:2px}
-.chat-time{font-size:.55rem;color:var(--muted);margin-top:2px}
-.chat-input-row{display:flex;gap:8px;padding:8px 0 0;border-top:1px solid var(--border)}
-.chat-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-family:'Syne',sans-serif;font-weight:800;font-size:.65rem;background:linear-gradient(135deg,#1a0828,#0a1a10);
-  border:1px solid var(--border);flex-shrink:0;overflow:hidden}
-.chat-avatar img{width:100%;height:100%;object-fit:cover}
-.emoji-row{display:flex;gap:6px;padding:6px 0;flex-wrap:wrap}
-.emoji-btn{background:#16161f;border:1px solid var(--border);border-radius:8px;padding:5px 8px;
-  font-size:1rem;cursor:pointer;transition:all .15s}
-.emoji-btn:hover{background:#22223a;transform:scale(1.1)}
+.chat-bubble{padding:9px 13px;border-radius:14px;font-size:.78rem;max-width:78%;line-height:1.5;word-break:break-word}
+.chat-bubble.mine{background:var(--accent);color:#08080f;border-radius:14px 14px 2px 14px}
+.chat-bubble.other{background:#1e1e2e;border:1px solid var(--border);border-radius:14px 14px 14px 2px}
+.chat-time{font-size:.55rem;color:var(--muted);margin-top:2px;text-align:right}
+.chat-input-row{display:flex;gap:8px;padding:10px 0 0;border-top:1px solid var(--border)}
+/* Conversation list */
+.convo-item{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:#16161f;
+  border:1px solid var(--border);cursor:pointer;transition:all .18s;margin-bottom:8px}
+.convo-item:hover{border-color:var(--accent)}
+.convo-info{flex:1;overflow:hidden}
+.convo-name{font-weight:700;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.convo-last{font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.convo-badge{background:var(--error);color:#fff;border-radius:50%;width:18px;height:18px;font-size:.6rem;
+  display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+/* Player search */
+.player-item{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:#16161f;
+  border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:all .18s}
+.player-item:hover{border-color:var(--accent)}
+/* Player profile view */
+.profile-view{text-align:center;padding:20px 0 16px}
+.profile-view-name{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;margin-top:10px}
+.profile-view-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.stat-box{background:#16161f;border-radius:8px;padding:10px 6px;text-align:center;border:1px solid var(--border)}
+.stat-val{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem}
+.stat-lbl{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+/* Tabs */
+.tabs{display:flex;gap:6px;background:#16161f;border-radius:10px;padding:4px;margin-bottom:14px}
+.tab{flex:1;padding:7px 6px;border-radius:7px;border:none;font-family:'Space Mono',monospace;font-size:.65rem;
+  cursor:pointer;transition:all .18s;background:none;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.tab.active{background:var(--card);color:#f0ede8;border:1px solid var(--border)}
 /* Leaderboard */
-.lb-row{display:grid;grid-template-columns:22px 28px 1fr repeat(3,40px);gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.72rem}
+.lb-row{display:grid;grid-template-columns:22px 32px 1fr repeat(3,38px);gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.72rem}
 .lb-header{color:var(--muted);font-size:.6rem;text-transform:uppercase;letter-spacing:1px}
 .lb-rank{font-weight:700;font-family:'Syne',sans-serif}
 .lb-rank.gold{color:#ffd700}.lb-rank.silver{color:#c0c0c0}.lb-rank.bronze{color:#cd7f32}
@@ -174,34 +193,60 @@ body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-hei
 /* Room badge */
 .room-badge{display:flex;align-items:center;gap:10px;background:#16161f;border:1px solid var(--border);border-radius:9px;padding:8px 12px;margin-bottom:10px;flex-wrap:wrap}
 .room-code{color:var(--accent);font-weight:700;letter-spacing:3px;font-size:.9rem;font-family:'Syne',sans-serif}
-/* Tabs */
-.tabs{display:flex;gap:6px;background:#16161f;border-radius:10px;padding:4px;margin-bottom:14px}
-.tab{flex:1;padding:7px 6px;border-radius:7px;border:none;font-family:'Space Mono',monospace;font-size:.65rem;
-  cursor:pointer;transition:all .18s;background:none;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-.tab.active{background:var(--card);color:#f0ede8;border:1px solid var(--border)}
-/* Spinner */
-.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);
-  border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-.waiting-code{font-family:'Syne',sans-serif;font-weight:800;font-size:2.2rem;color:var(--accent);letter-spacing:6px;margin:10px 0;text-align:center}
 /* Profile section */
 .section{border-top:1px solid var(--border);padding-top:14px;margin-top:4px}
 .section-title{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
-/* Stats grid */
-.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat-box{background:#16161f;border-radius:8px;padding:10px 6px;text-align:center;border:1px solid var(--border)}
-.stat-val{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem}
-.stat-lbl{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-/* Log */
-.log{max-height:100px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+/* Spinner */
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.waiting-code{font-family:'Syne',sans-serif;font-weight:800;font-size:2.2rem;color:var(--accent);letter-spacing:6px;margin:10px 0;text-align:center}
+.log{max-height:90px;overflow-y:auto;scrollbar-width:thin}
 .log-entry{display:flex;gap:7px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.68rem}
 .log-x{color:var(--x)}.log-o{color:var(--o)}
-/* Online in-game chat */
 .game-chat{margin-top:12px;background:#16161f;border-radius:10px;border:1px solid var(--border);overflow:hidden}
-.game-chat-header{padding:8px 12px;border-bottom:1px solid var(--border);font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px}
-.game-chat-msgs{height:100px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px;scrollbar-width:thin}
-.game-chat-msg{font-size:.7rem;padding:3px 0}
-.game-chat-input{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border)}
+.game-chat-header{padding:8px 12px;border-bottom:1px solid var(--border);font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;display:flex;justify-content:space-between;align-items:center}
+.game-chat-msgs{height:120px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin}
+.game-chat-msg{font-size:.7rem;padding:4px 8px;border-radius:8px;max-width:90%}
+.game-chat-msg.mine{background:rgba(255,215,0,.12);align-self:flex-end;text-align:right}
+.game-chat-msg.other{background:rgba(46,213,115,.08);align-self:flex-start}
+.game-chat-input{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);align-items:center}
+/* Chat popup */
+.chat-popup{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:999;
+  background:var(--card);border:2px solid var(--o);border-radius:14px;padding:12px 16px;
+  max-width:300px;width:90%;animation:popIn .3s cubic-bezier(.36,.07,.19,.97);box-shadow:0 8px 32px rgba(0,0,0,.5)}
+@keyframes popIn{0%{transform:translateX(-50%) translateY(-20px);opacity:0}100%{transform:translateX(-50%) translateY(0);opacity:1}}
+.chat-popup-name{font-size:.65rem;color:var(--o);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.chat-popup-text{font-size:.8rem;color:#f0ede8;line-height:1.4}
+/* Voice note */
+.voice-btn{width:40px;height:40px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;flex-shrink:0;font-size:1.1rem}
+.voice-btn.idle{background:rgba(255,71,87,.15);color:var(--x)}
+.voice-btn.recording{background:var(--x);color:#fff;animation:pulse-rec .6s ease infinite alternate}
+@keyframes pulse-rec{from{box-shadow:0 0 0 0 rgba(255,71,87,.5)}to{box-shadow:0 0 0 8px rgba(255,71,87,0)}}
+.voice-msg-btn{background:rgba(46,213,115,.15);border:1px solid rgba(46,213,115,.3);color:var(--o);border-radius:20px;padding:5px 12px;font-size:.72rem;cursor:pointer;display:flex;align-items:center;gap:6px}
+.emoji-row{display:flex;gap:5px;padding:6px 0;flex-wrap:wrap}
+.emoji-btn{background:#16161f;border:1px solid var(--border);border-radius:7px;padding:5px 7px;font-size:.95rem;cursor:pointer;transition:all .15s}
+.emoji-btn:hover{background:#22223a;transform:scale(1.1)}
+/* Welcome screen */
+.welcome-overlay{position:fixed;inset:0;background:rgba(8,8,15,.97);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.welcome-box{background:var(--card);border:2px solid var(--accent);border-radius:20px;padding:32px 24px;max-width:380px;width:100%;text-align:center;animation:welcomeIn .5s cubic-bezier(.36,.07,.19,.97)}
+@keyframes welcomeIn{0%{transform:scale(.7) translateY(40px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+.welcome-emoji{font-size:3.5rem;margin-bottom:12px;animation:bounce 1s ease infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+.welcome-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--accent);margin-bottom:12px;line-height:1.3}
+.welcome-msg{font-size:.78rem;color:#f0ede8;line-height:1.7;margin-bottom:20px;opacity:.9}
+.welcome-name{color:var(--accent);font-weight:700}
+/* Symbol picker */
+.symbol-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.symbol-btn{padding:14px;border-radius:10px;border:2px solid var(--border);background:#16161f;cursor:pointer;transition:all .18s;text-align:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem}
+.symbol-btn.active-x{border-color:var(--x);background:rgba(255,71,87,.12);color:var(--x)}
+.symbol-btn.active-o{border-color:var(--o);background:rgba(46,213,115,.12);color:var(--o)}
+.symbol-btn:not(.active-x):not(.active-o):hover{border-color:var(--muted)}
+/* First player picker */
+.first-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.first-btn{padding:12px 8px;border-radius:10px;border:2px solid var(--border);background:#16161f;cursor:pointer;transition:all .18s;text-align:center;font-size:.75rem;font-family:'Space Mono',monospace}
+.first-btn.active{border-color:var(--accent);background:rgba(255,215,0,.08);color:var(--accent);font-weight:700}
+/* Round indicator */
+.round-indicator{text-align:center;font-size:.65rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:2px}
 @media(max-width:380px){.btn{font-size:.72rem;padding:11px}.score-num{font-size:1.2rem}}
 `;
 
@@ -213,23 +258,13 @@ const Logo = ({small}) => (
   </div>
 );
 
-// ── AVATAR COMPONENT ──────────────────────────────────────────────────────────
-const Avatar = ({user, size="sm"}) => {
-  const initials = (n) => n?.slice(0,2).toUpperCase()||"??";
-  if (size === "lg") return (
-    <div className="avatar-lg">
-      {user?.photoURL ? <img src={user.photoURL} alt="avatar"/> : initials(user?.username)}
-      <div className="avatar-edit">✏️</div>
-    </div>
-  );
-  if (size === "chat") return (
-    <div className="chat-avatar">
-      {user?.photoURL ? <img src={user.photoURL} alt="avatar"/> : initials(user?.username)}
-    </div>
-  );
+const AvatarComp = ({user, size="sm"}) => {
+  const ini = (n) => n?.slice(0,2).toUpperCase()||"??";
+  const style = size==="lg" ? "avatar-lg" : size==="md" ? "avatar-md" : "avatar";
   return (
-    <div className="avatar">
-      {user?.photoURL ? <img src={user.photoURL} alt="avatar"/> : initials(user?.username)}
+    <div className={style}>
+      {user?.photoURL ? <img src={user.photoURL} alt=""/> : ini(user?.username)}
+      {size==="lg" && <div className="avatar-edit">✏️</div>}
     </div>
   );
 };
@@ -249,7 +284,7 @@ export default function App() {
   const [forgotMsg, setForgotMsg] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
 
-  // App screens
+  // Screens & game
   const [screen, setScreen] = useState("home");
   const [mode, setMode] = useState("local");
   const [players, setPlayers] = useState({X:"",O:""});
@@ -280,21 +315,46 @@ export default function App() {
   const [photoMsg, setPhotoMsg] = useState("");
   const fileInputRef = useRef(null);
 
-  // Community chat
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatSending, setChatSending] = useState(false);
-  const chatEndRef = useRef(null);
+  // Private messaging
+  const [msgTab, setMsgTab] = useState("inbox"); // inbox | search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [activeConvo, setActiveConvo] = useState(null);
+  const [privMessages, setPrivMessages] = useState([]);
+  const [privInput, setPrivInput] = useState("");
+  const [privSending, setPrivSending] = useState(false);
+  const [viewingProfile, setViewingProfile] = useState(null);
+  const [totalUnread, setTotalUnread] = useState(0);
+  const privEndRef = useRef(null);
 
-  // Game chat (online multiplayer)
+  // Game chat
   const [gameChatMsgs, setGameChatMsgs] = useState([]);
   const [gameChatInput, setGameChatInput] = useState("");
   const [showGameChat, setShowGameChat] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [welcomeName, setWelcomeName] = useState("");
+  // Game setup
+  const [setupMode, setSetupMode] = useState("local");
+  const [p1Name, setP1Name] = useState("");
+  const [p2Name, setP2Name] = useState("");
+  const [p1Symbol, setP1Symbol] = useState("X");
+  const [firstPlayer, setFirstPlayer] = useState("p1");
+  const [roundStarter, setRoundStarter] = useState("p1");
+  // Chat popup & voice notes
+  const [chatPopup, setChatPopup] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const gameChatEndRef = useRef(null);
 
-  const pollRef = useRef(null);
   const resultHandledRef = useRef(false);
   const unsubRoomRef = useRef(null);
-  const unsubChatRef = useRef(null);
+  const unsubPrivRef = useRef(null);
+  const unsubConvosRef = useRef(null);
   const unsubGameChatRef = useRef(null);
 
   const EMOJIS = ["😂","🔥","👏","😮","🤝","😤","🎮","💪","🏆","👑"];
@@ -317,19 +377,32 @@ export default function App() {
     });
   }, []);
 
-  // Subscribe community chat
+  // Subscribe conversations when on messages screen
   useEffect(() => {
-    if (!fbReady || !authUser) return;
-    const {collection, query, orderBy, limit, onSnapshot} = window._fb;
-    const q = query(collection(db,"community_chat"), orderBy("createdAt","asc"), limit(100));
-    unsubChatRef.current = onSnapshot(q, snap => {
-      setChatMessages(snap.docs.map(d=>({id:d.id,...d.data()})));
-      setTimeout(()=>chatEndRef.current?.scrollIntoView({behavior:"smooth"}), 100);
-    });
-    return () => unsubChatRef.current?.();
-  }, [fbReady, authUser]);
+    if (!fbReady||!authUser||screen!=="messages") return;
+    subscribeConversations();
+    return () => unsubConvosRef.current?.();
+  }, [fbReady, authUser, screen]);
 
-  // ── FIRESTORE HELPERS ───────────────────────────────────────────────────────
+  // Subscribe private messages when active conversation open
+  useEffect(() => {
+    if (!activeConvo||!authUser) return;
+    const convoId = getConvoId(authUser.uid, activeConvo.uid);
+    const {collection, query, orderBy, onSnapshot} = window._fb;
+    unsubPrivRef.current?.();
+    const q = query(collection(db,`conversations/${convoId}/messages`), orderBy("createdAt","asc"));
+    unsubPrivRef.current = onSnapshot(q, snap => {
+      setPrivMessages(snap.docs.map(d=>({id:d.id,...d.data()})));
+      setTimeout(()=>privEndRef.current?.scrollIntoView({behavior:"smooth"}), 100);
+    });
+    // Mark as read
+    markRead(convoId);
+    return () => unsubPrivRef.current?.();
+  }, [activeConvo]);
+
+  // ── HELPERS ─────────────────────────────────────────────────────────────────
+  const getConvoId = (uid1, uid2) => [uid1,uid2].sort().join("_");
+
   const getUserProfile = async (uid) => {
     const {doc, getDoc} = window._fb;
     try { const s=await getDoc(doc(db,"users",uid)); return s.exists()?s.data():null; } catch { return null; }
@@ -356,40 +429,123 @@ export default function App() {
   const saveGameToFirestore = async (res, log, pls) => {
     const {doc, setDoc, getDoc, updateDoc, serverTimestamp, collection} = window._fb;
     const winner = res==="draw"?null:res.winner;
-    setScores(s=>({X:s.X+(winner==="X"?1:0), O:s.O+(winner==="O"?1:0), draw:s.draw+(res==="draw"?1:0)}));
+    setScores(s=>({X:s.X+(winner==="X"?1:0),O:s.O+(winner==="O"?1:0),draw:s.draw+(res==="draw"?1:0)}));
     if (authUser) {
-      const isX = pls.X===authUser.username;
-      const won = isX?winner==="X":winner==="O";
-      const lbRef = doc(db,"leaderboard",authUser.uid);
-      const lbSnap = await getDoc(lbRef);
-      if (lbSnap.exists()) { await updateDoc(lbRef,{wins:(lbSnap.data().wins||0)+(won?1:0),draws:(lbSnap.data().draws||0)+(res==="draw"?1:0),games:(lbSnap.data().games||0)+1}); }
-      else { await setDoc(lbRef,{username:authUser.username,photoURL:authUser.photoURL||null,wins:won?1:0,draws:res==="draw"?1:0,games:1}); }
-      const histRef = doc(collection(db,`users/${authUser.uid}/history`));
+      const isX=pls.X===authUser.username; const won=isX?winner==="X":winner==="O";
+      const lbRef=doc(db,"leaderboard",authUser.uid);
+      const lbSnap=await getDoc(lbRef);
+      if(lbSnap.exists()){await updateDoc(lbRef,{wins:(lbSnap.data().wins||0)+(won?1:0),draws:(lbSnap.data().draws||0)+(res==="draw"?1:0),games:(lbSnap.data().games||0)+1});}
+      else{await setDoc(lbRef,{username:authUser.username,photoURL:authUser.photoURL||null,wins:won?1:0,draws:res==="draw"?1:0,games:1});}
+      const histRef=doc(collection(db,`users/${authUser.uid}/history`));
       await setDoc(histRef,{players:pls,winner:winner||"Draw",moves:log.length,mode,createdAt:serverTimestamp()});
     }
     loadLeaderboard(); if(authUser) loadMyHistory(authUser.uid);
+  };
+
+  // ── PRIVATE MESSAGING ───────────────────────────────────────────────────────
+  const subscribeConversations = () => {
+    const {collection, query, where, orderBy, onSnapshot} = window._fb;
+    unsubConvosRef.current?.();
+    const q = query(collection(db,"conversations"), where("members","array-contains",authUser.uid), orderBy("lastAt","desc"));
+    unsubConvosRef.current = onSnapshot(q, snap => {
+      const convos = snap.docs.map(d=>({id:d.id,...d.data()}));
+      setConversations(convos);
+      const unread = convos.reduce((sum,c)=>sum+(c[`unread_${authUser.uid}`]||0),0);
+      setTotalUnread(unread);
+    });
+  };
+
+  const searchUsers = async () => {
+    if (!searchQuery.trim()) return;
+    setSearchBusy(true);
+    const {collection, getDocs} = window._fb;
+    try {
+      const snap = await getDocs(collection(db,"users"));
+      const results = snap.docs
+        .map(d=>({uid:d.id,...d.data()}))
+        .filter(u=>u.uid!==authUser.uid && u.username?.toLowerCase().includes(searchQuery.toLowerCase()));
+      setSearchResults(results);
+    } catch {}
+    setSearchBusy(false);
+  };
+
+  const openConversation = async (otherUser) => {
+    setActiveConvo(otherUser);
+    setScreen("private-chat");
+  };
+
+  const markRead = async (convoId) => {
+    const {doc, updateDoc} = window._fb;
+    try { await updateDoc(doc(db,"conversations",convoId), {[`unread_${authUser.uid}`]:0}); } catch {}
+  };
+
+  const sendPrivMessage = async () => {
+    if (!privInput.trim()||privSending||!activeConvo) return;
+    setPrivSending(true);
+    const {doc, setDoc, getDoc, updateDoc, addDoc, collection, serverTimestamp} = window._fb;
+    const convoId = getConvoId(authUser.uid, activeConvo.uid);
+    const text = privInput.trim();
+    setPrivInput("");
+    try {
+      // Create/update conversation doc
+      const convoRef = doc(db,"conversations",convoId);
+      const convoSnap = await getDoc(convoRef);
+      const now = serverTimestamp();
+      if (!convoSnap.exists()) {
+        await setDoc(convoRef, {
+          members:[authUser.uid, activeConvo.uid],
+          memberNames:{[authUser.uid]:authUser.username,[activeConvo.uid]:activeConvo.username},
+          memberPhotos:{[authUser.uid]:authUser.photoURL||null,[activeConvo.uid]:activeConvo.photoURL||null},
+          lastMsg:text, lastAt:now,
+          [`unread_${activeConvo.uid}`]:1,
+          [`unread_${authUser.uid}`]:0,
+        });
+      } else {
+        await updateDoc(convoRef, {
+          lastMsg:text, lastAt:now,
+          [`unread_${activeConvo.uid}`]:(convoSnap.data()[`unread_${activeConvo.uid}`]||0)+1,
+        });
+      }
+      // Add message
+      await addDoc(collection(db,`conversations/${convoId}/messages`), {
+        text, senderUid:authUser.uid, senderName:authUser.username,
+        senderPhoto:authUser.photoURL||null, createdAt:now,
+      });
+    } catch(e) { console.error(e); }
+    setPrivSending(false);
+  };
+
+  const viewPlayerProfile = async (user) => {
+    // Load their leaderboard stats
+    const {doc, getDoc} = window._fb;
+    try {
+      const lbSnap = await getDoc(doc(db,"leaderboard",user.uid));
+      const stats = lbSnap.exists() ? lbSnap.data() : {wins:0,draws:0,games:0};
+      setViewingProfile({...user, ...stats});
+    } catch { setViewingProfile(user); }
+    setScreen("view-profile");
   };
 
   // ── AUTH ────────────────────────────────────────────────────────────────────
   const handleRegister = async () => {
     setAuthError(""); setAuthBusy(true);
     const {email,username,password,confirm} = authForm;
-    if (!email||!username||!password) { setAuthError("All fields are required."); setAuthBusy(false); return; }
-    if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) { setAuthError("Enter a valid email."); setAuthBusy(false); return; }
-    if (username.length<2) { setAuthError("Username must be at least 2 characters."); setAuthBusy(false); return; }
-    if (password.length<6) { setAuthError("Password must be at least 6 characters."); setAuthBusy(false); return; }
-    if (password!==confirm) { setAuthError("Passwords do not match."); setAuthBusy(false); return; }
+    if(!email||!username||!password){setAuthError("All fields are required.");setAuthBusy(false);return;}
+    if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)){setAuthError("Enter a valid email.");setAuthBusy(false);return;}
+    if(username.length<2){setAuthError("Username must be at least 2 characters.");setAuthBusy(false);return;}
+    if(password.length<6){setAuthError("Password must be at least 6 characters.");setAuthBusy(false);return;}
+    if(password!==confirm){setAuthError("Passwords do not match.");setAuthBusy(false);return;}
     try {
-      const {createUserWithEmailAndPassword, updateProfile} = window._fb;
-      const {doc, setDoc} = window._fb;
+      const {createUserWithEmailAndPassword,updateProfile} = window._fb;
+      const {doc,setDoc} = window._fb;
       const cred = await createUserWithEmailAndPassword(window._fb.auth, email, password);
       await updateProfile(cred.user, {displayName:username});
-      await setDoc(doc(db,"users",cred.user.uid), {username, email, photoURL:null, createdAt:Date.now()});
+      await setDoc(doc(db,"users",cred.user.uid), {username,email,photoURL:null,createdAt:Date.now()});
       setAuthForm({email:"",username:"",password:"",confirm:""});
+      setWelcomeName(username);
+      setShowWelcome(true);
     } catch(e) {
-      const msg = e.code==="auth/email-already-in-use"?"Email already registered. Please sign in."
-        :e.code==="auth/weak-password"?"Password too weak.":e.message;
-      setAuthError(msg);
+      setAuthError(e.code==="auth/email-already-in-use"?"Email already registered.":e.code==="auth/weak-password"?"Password too weak.":e.message);
     }
     setAuthBusy(false);
   };
@@ -397,225 +553,246 @@ export default function App() {
   const handleLogin = async () => {
     setAuthError(""); setAuthBusy(true);
     const {email,password} = authForm;
-    if (!email||!password) { setAuthError("Email and password are required."); setAuthBusy(false); return; }
+    if(!email||!password){setAuthError("Email and password required.");setAuthBusy(false);return;}
     try {
-      const {signInWithEmailAndPassword} = window._fb;
-      await signInWithEmailAndPassword(window._fb.auth, email, password);
+      await window._fb.signInWithEmailAndPassword(window._fb.auth, email, password);
       setAuthForm({email:"",username:"",password:"",confirm:""});
     } catch(e) {
-      const msg = e.code==="auth/user-not-found"||e.code==="auth/invalid-credential"?"No account found or wrong password."
-        :e.code==="auth/wrong-password"?"Incorrect password."
-        :e.code==="auth/too-many-requests"?"Too many attempts. Try again later.":e.message;
-      setAuthError(msg);
+      setAuthError(e.code==="auth/user-not-found"||e.code==="auth/invalid-credential"?"No account found or wrong password.":e.code==="auth/wrong-password"?"Incorrect password.":e.code==="auth/too-many-requests"?"Too many attempts. Try again later.":e.message);
     }
     setAuthBusy(false);
   };
 
-  const handleForgotPassword = async () => {
+  const handleForgotPassword = async (emailToUse) => {
     setForgotMsg(""); setForgotBusy(true);
-    if (!forgotEmail) { setForgotMsg("error:Enter your email address."); setForgotBusy(false); return; }
+    const em = emailToUse || forgotEmail;
+    if(!em){setForgotMsg("error:Enter your email.");setForgotBusy(false);return;}
     try {
-      const {sendPasswordResetEmail} = window._fb;
-      await sendPasswordResetEmail(window._fb.auth, forgotEmail);
+      await window._fb.sendPasswordResetEmail(window._fb.auth, em);
       setForgotMsg("success:Reset email sent! Check your inbox 📧");
-    } catch(e) {
-      const msg = e.code==="auth/user-not-found"?"No account found with this email.":e.message;
-      setForgotMsg("error:"+msg);
-    }
+    } catch(e) { setForgotMsg("error:"+(e.code==="auth/user-not-found"?"No account with this email.":e.message)); }
     setForgotBusy(false);
   };
 
   const handleLogout = async () => {
-    const {signOut} = window._fb;
-    await signOut(window._fb.auth);
-    unsubChatRef.current?.(); unsubRoomRef.current?.(); unsubGameChatRef.current?.();
+    await window._fb.signOut(window._fb.auth);
+    unsubRoomRef.current?.(); unsubPrivRef.current?.();
+    unsubConvosRef.current?.(); unsubGameChatRef.current?.();
     setScreen("home"); setOnlineRoom(""); setOnlineRole(null); setResult(null);
     setBoard(Array(9).fill(null)); setMoveLog([]); setScores({X:0,O:0,draw:0});
+    setActiveConvo(null); setConversations([]); setPrivMessages([]);
   };
 
   // ── PROFILE UPDATES ─────────────────────────────────────────────────────────
   const handleEditUsername = async () => {
     setEditUsernameMsg(""); setEditUsernameBusy(true);
-    if (!editUsername||editUsername.trim().length<2) { setEditUsernameMsg("error:Username must be at least 2 characters."); setEditUsernameBusy(false); return; }
-    if (editUsername.trim()===authUser.username) { setEditUsernameMsg("error:That's already your username!"); setEditUsernameBusy(false); return; }
+    if(!editUsername||editUsername.trim().length<2){setEditUsernameMsg("error:Username must be at least 2 characters.");setEditUsernameBusy(false);return;}
+    if(editUsername.trim()===authUser.username){setEditUsernameMsg("error:That's already your username!");setEditUsernameBusy(false);return;}
     try {
-      const {updateProfile, doc, updateDoc, getDoc} = window._fb;
-      await updateProfile(window._fb.auth.currentUser, {displayName:editUsername.trim()});
-      await updateDoc(doc(db,"users",authUser.uid), {username:editUsername.trim()});
-      const lbSnap = await getDoc(doc(db,"leaderboard",authUser.uid));
-      if (lbSnap.exists()) await updateDoc(doc(db,"leaderboard",authUser.uid), {username:editUsername.trim()});
+      const {updateProfile,doc,updateDoc,getDoc} = window._fb;
+      await updateProfile(window._fb.auth.currentUser,{displayName:editUsername.trim()});
+      await updateDoc(doc(db,"users",authUser.uid),{username:editUsername.trim()});
+      const lbSnap=await getDoc(doc(db,"leaderboard",authUser.uid));
+      if(lbSnap.exists()) await updateDoc(doc(db,"leaderboard",authUser.uid),{username:editUsername.trim()});
       setAuthUser(u=>({...u,username:editUsername.trim()}));
       setEditUsernameMsg("success:Username updated! ✅"); setEditUsername("");
-    } catch(e) { setEditUsernameMsg("error:Failed to update. Try again."); }
+    } catch { setEditUsernameMsg("error:Failed to update. Try again."); }
     setEditUsernameBusy(false);
   };
 
   const handleEditEmail = async () => {
     setEditEmailMsg(""); setEditEmailBusy(true);
-    if (!editEmail||!editEmailPw) { setEditEmailMsg("error:Enter new email and current password."); setEditEmailBusy(false); return; }
-    if (!/^[^@]+@[^@]+\.[^@]+$/.test(editEmail)) { setEditEmailMsg("error:Enter a valid email."); setEditEmailBusy(false); return; }
+    if(!editEmail||!editEmailPw){setEditEmailMsg("error:Enter new email and current password.");setEditEmailBusy(false);return;}
+    if(!/^[^@]+@[^@]+\.[^@]+$/.test(editEmail)){setEditEmailMsg("error:Enter a valid email.");setEditEmailBusy(false);return;}
     try {
-      const {EmailAuthProvider, reauthenticateWithCredential, updateEmail, doc, updateDoc} = window._fb;
+      const {EmailAuthProvider,reauthenticateWithCredential,updateEmail,doc,updateDoc} = window._fb;
       const credential = EmailAuthProvider.credential(authUser.email, editEmailPw);
       await reauthenticateWithCredential(window._fb.auth.currentUser, credential);
       await updateEmail(window._fb.auth.currentUser, editEmail);
-      await updateDoc(doc(db,"users",authUser.uid), {email:editEmail});
+      await updateDoc(doc(db,"users",authUser.uid),{email:editEmail});
       setAuthUser(u=>({...u,email:editEmail}));
       setEditEmailMsg("success:Email updated! ✅"); setEditEmail(""); setEditEmailPw("");
     } catch(e) {
-      const msg = e.code==="auth/wrong-password"?"Wrong password. Try again."
-        :e.code==="auth/email-already-in-use"?"Email already in use.":e.message;
-      setEditEmailMsg("error:"+msg);
+      setEditEmailMsg("error:"+(e.code==="auth/wrong-password"?"Wrong password.":e.code==="auth/email-already-in-use"?"Email already in use.":e.message));
     }
     setEditEmailBusy(false);
   };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 2*1024*1024) { setPhotoMsg("error:Image must be under 2MB"); return; }
+    if(!file) return;
+    if(file.size>2*1024*1024){setPhotoMsg("error:Image must be under 2MB");return;}
     setUploadingPhoto(true); setPhotoMsg("");
-    try {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const base64 = ev.target.result;
-        const {ref, uploadString, getDownloadURL, updateProfile, doc, updateDoc} = window._fb;
-        const storageRef = ref(storage, `avatars/${authUser.uid}`);
-        await uploadString(storageRef, base64, 'data_url');
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const {ref,uploadString,getDownloadURL,updateProfile,doc,updateDoc,getDoc} = window._fb;
+        const storageRef = ref(storage,`avatars/${authUser.uid}`);
+        await uploadString(storageRef, ev.target.result,'data_url');
         const url = await getDownloadURL(storageRef);
-        await updateProfile(window._fb.auth.currentUser, {photoURL:url});
-        await updateDoc(doc(db,"users",authUser.uid), {photoURL:url});
-        const lbSnap = await window._fb.getDoc(doc(db,"leaderboard",authUser.uid));
-        if (lbSnap.exists()) await updateDoc(doc(db,"leaderboard",authUser.uid), {photoURL:url});
+        await updateProfile(window._fb.auth.currentUser,{photoURL:url});
+        await updateDoc(doc(db,"users",authUser.uid),{photoURL:url});
+        const lbSnap=await getDoc(doc(db,"leaderboard",authUser.uid));
+        if(lbSnap.exists()) await updateDoc(doc(db,"leaderboard",authUser.uid),{photoURL:url});
         setAuthUser(u=>({...u,photoURL:url}));
         setPhotoMsg("success:Profile picture updated! ✅");
-        setUploadingPhoto(false);
-      };
-      reader.readAsDataURL(file);
-    } catch(e) { setPhotoMsg("error:Upload failed. Try again."); setUploadingPhoto(false); }
-  };
-
-  // ── COMMUNITY CHAT ──────────────────────────────────────────────────────────
-  const sendChatMessage = async (text) => {
-    if (!text.trim()||chatSending) return;
-    setChatSending(true);
-    try {
-      const {collection, addDoc, serverTimestamp} = window._fb;
-      await addDoc(collection(db,"community_chat"), {
-        text:text.trim(), uid:authUser.uid, username:authUser.username,
-        photoURL:authUser.photoURL||null, createdAt:serverTimestamp(),
-      });
-      setChatInput("");
-    } catch {}
-    setChatSending(false);
+      } catch { setPhotoMsg("error:Upload failed. Try again."); }
+      setUploadingPhoto(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   // ── ONLINE ROOM ─────────────────────────────────────────────────────────────
   const createRoom = async () => {
     setRoomError("");
-    const {doc, setDoc, serverTimestamp} = window._fb;
+    const {doc,setDoc,serverTimestamp} = window._fb;
     const room = Math.random().toString(36).slice(2,8).toUpperCase();
-    await setDoc(doc(db,"rooms",room), {
-      board:Array(9).fill(null), turn:"X", moveLog:[], result:null, winLine:null,
-      hostUid:authUser.uid, hostName:authUser.username,
-      guestUid:null, guestName:null, createdAt:serverTimestamp(),
-    });
-    setOnlineRoom(room); setOnlineRole("X");
-    setPlayers({X:authUser.username, O:"Waiting…"});
-    setWaitingForOpponent(true);
-    setBoard(Array(9).fill(null)); setTurn("X"); setResult(null); setWinLine(null); setMoveLog([]);
-    resultHandledRef.current=false; setScores({X:0,O:0,draw:0});
-    setScreen("game"); subscribeRoom(room,"X"); subscribeGameChat(room);
+    await setDoc(doc(db,"rooms",room),{board:Array(9).fill(null),turn:"X",moveLog:[],result:null,winLine:null,hostUid:authUser.uid,hostName:authUser.username,guestUid:null,guestName:null,createdAt:serverTimestamp()});
+    setOnlineRoom(room); setOnlineRole("X"); setPlayers({X:authUser.username,O:"Waiting…"});
+    setWaitingForOpponent(true); setBoard(Array(9).fill(null)); setTurn("X");
+    setResult(null); setWinLine(null); setMoveLog([]); resultHandledRef.current=false;
+    setScores({X:0,O:0,draw:0}); setScreen("game"); subscribeRoom(room); subscribeGameChat(room);
   };
 
   const joinRoom = async () => {
     setRoomError("");
     const room = roomInput.trim().toUpperCase();
-    if (!room) { setRoomError("Enter a room code."); return; }
-    const {doc, getDoc, updateDoc} = window._fb;
+    if(!room){setRoomError("Enter a room code.");return;}
+    const {doc,getDoc,updateDoc} = window._fb;
     const snap = await getDoc(doc(db,"rooms",room));
-    if (!snap.exists()) { setRoomError("Room not found. Check the code."); return; }
+    if(!snap.exists()){setRoomError("Room not found.");return;}
     const data = snap.data();
-    if (data.guestUid) { setRoomError("Room is full."); return; }
-    if (data.hostUid===authUser.uid) { setRoomError("You can't join your own room."); return; }
-    await updateDoc(doc(db,"rooms",room), {guestUid:authUser.uid, guestName:authUser.username});
-    setOnlineRoom(room); setOnlineRole("O");
-    setPlayers({X:data.hostName, O:authUser.username});
-    setWaitingForOpponent(false);
-    setBoard(data.board); setTurn(data.turn); setResult(null); setWinLine(null); setMoveLog(data.moveLog||[]);
-    resultHandledRef.current=false; setScores({X:0,O:0,draw:0});
-    setScreen("game"); subscribeRoom(room,"O"); subscribeGameChat(room);
+    if(data.guestUid){setRoomError("Room is full.");return;}
+    if(data.hostUid===authUser.uid){setRoomError("Can't join your own room.");return;}
+    await updateDoc(doc(db,"rooms",room),{guestUid:authUser.uid,guestName:authUser.username});
+    setOnlineRoom(room); setOnlineRole("O"); setPlayers({X:data.hostName,O:authUser.username});
+    setWaitingForOpponent(false); setBoard(data.board); setTurn(data.turn);
+    setResult(null); setWinLine(null); setMoveLog(data.moveLog||[]); resultHandledRef.current=false;
+    setScores({X:0,O:0,draw:0}); setScreen("game"); subscribeRoom(room); subscribeGameChat(room);
   };
 
-  const subscribeRoom = (room, role) => {
-    const {doc, onSnapshot} = window._fb;
-    if (unsubRoomRef.current) unsubRoomRef.current();
-    unsubRoomRef.current = onSnapshot(doc(db,"rooms",room), (snap) => {
-      if (!snap.exists()) return;
-      const state = snap.data();
-      if (state.guestUid&&state.guestName) { setWaitingForOpponent(false); setPlayers({X:state.hostName,O:state.guestName}); }
-      setBoard(state.board); setTurn(state.turn); setMoveLog(state.moveLog||[]);
-      if (state.result&&!resultHandledRef.current) {
-        resultHandledRef.current=true; setResult(state.result);
-        if (state.result!=="draw") setWinLine(state.winLine);
-        saveGameToFirestore(state.result, state.moveLog||[], {X:state.hostName,O:state.guestName});
+  const subscribeRoom = (room) => {
+    const {doc,onSnapshot} = window._fb;
+    unsubRoomRef.current?.();
+    unsubRoomRef.current = onSnapshot(doc(db,"rooms",room), snap => {
+      if(!snap.exists()) return;
+      const s = snap.data();
+      if(s.guestUid&&s.guestName){setWaitingForOpponent(false);setPlayers({X:s.hostName,O:s.guestName});}
+      setBoard(s.board); setTurn(s.turn); setMoveLog(s.moveLog||[]);
+      if(s.result&&!resultHandledRef.current){
+        resultHandledRef.current=true; setResult(s.result);
+        if(s.result!=="draw") setWinLine(s.winLine);
+        saveGameToFirestore(s.result,s.moveLog||[],{X:s.hostName,O:s.guestName});
       }
     });
   };
 
   const subscribeGameChat = (room) => {
-    const {collection, query, orderBy, onSnapshot} = window._fb;
-    if (unsubGameChatRef.current) unsubGameChatRef.current();
-    const q = query(collection(db,`rooms/${room}/chat`), orderBy("createdAt","asc"));
-    unsubGameChatRef.current = onSnapshot(q, snap => {
+    const {collection,query,orderBy,onSnapshot} = window._fb;
+    unsubGameChatRef.current?.();
+    unsubGameChatRef.current = onSnapshot(query(collection(db,`rooms/${room}/chat`),orderBy("createdAt","asc")), snap=>{
       setGameChatMsgs(snap.docs.map(d=>({id:d.id,...d.data()})));
     });
   };
 
-  const sendGameChat = async (text) => {
-    if (!text.trim()) return;
-    const {collection, addDoc, serverTimestamp} = window._fb;
-    await addDoc(collection(db,`rooms/${onlineRoom}/chat`), {
-      text:text.trim(), uid:authUser.uid, username:authUser.username, createdAt:serverTimestamp(),
-    });
-    setGameChatInput("");
+  const sendGameChat = async (text, isVoice=false, audioBase64=null) => {
+    if(!isVoice && !text.trim()) return;
+    const {collection,addDoc,serverTimestamp} = window._fb;
+    const msgData = {
+      uid:authUser.uid, username:authUser.username,
+      createdAt:serverTimestamp(),
+      isVoice: isVoice||false,
+      text: isVoice ? "🎙️ Voice note" : text.trim(),
+      audioBase64: audioBase64||null,
+    };
+    await addDoc(collection(db,`rooms/${onlineRoom}/chat`), msgData);
+    if(!isVoice) setGameChatInput("");
+    setTimeout(()=>gameChatEndRef.current?.scrollIntoView({behavior:"smooth"}),100);
+  };
+
+  // Show popup for opponent messages
+  useEffect(()=>{
+    if(gameChatMsgs.length===0) return;
+    const last = gameChatMsgs[gameChatMsgs.length-1];
+    if(last.uid!==authUser?.uid) {
+      setChatPopup({text:last.text, username:last.username, isVoice:last.isVoice, audioBase64:last.audioBase64});
+      setTimeout(()=>setChatPopup(null), 4000);
+    }
+  },[gameChatMsgs]);
+
+  // Voice recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = e => audioChunksRef.current.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, {type:"audio/webm"});
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          await sendGameChat("", true, ev.target.result);
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(t=>t.stop());
+        clearInterval(recordingTimerRef.current);
+        setRecordingTime(0);
+      };
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(()=>setRecordingTime(t=>t+1), 1000);
+    } catch(e) { alert("Microphone access denied. Please allow microphone in browser settings."); }
+  };
+
+  const stopRecording = () => {
+    if(mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const playAudio = (base64) => {
+    const audio = new Audio(base64);
+    audio.play();
   };
 
   // ── AI ──────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (mode!=="ai"||turn!=="O"||result) return;
-    const t = setTimeout(()=>{ const m=bestMove(board); if(m>=0) handleCellClick(m,board,"O"); }, 550);
+    if(mode!=="ai"||turn!=="O"||result) return;
+    const t = setTimeout(()=>{const m=bestMove(board);if(m>=0) handleCellClick(m,board,"O");},550);
     return ()=>clearTimeout(t);
   }, [turn,mode,board,result]);
 
   // ── CELL CLICK ──────────────────────────────────────────────────────────────
-  const handleCellClick = useCallback(async (i, currentBoard=board, currentTurn=turn) => {
-    if (currentBoard[i]||result) return;
-    if (mode==="online") { if(waitingForOpponent||onlineRole!==currentTurn) return; }
+  const handleCellClick = useCallback(async (i,currentBoard=board,currentTurn=turn) => {
+    if(currentBoard[i]||result) return;
+    if(mode==="online"){if(waitingForOpponent||onlineRole!==currentTurn) return;}
     setAnimCell(i); setTimeout(()=>setAnimCell(null),300);
     const nb=[...currentBoard]; nb[i]=currentTurn;
-    const newLog=[...moveLog, {player:currentTurn, cell:i, time:Date.now()}];
+    const newLog=[...moveLog,{player:currentTurn,cell:i,time:Date.now()}];
     const w=calcWinner(nb); const isDraw=!w&&!nb.includes(null);
     const newResult=w||(isDraw?"draw":null);
     const newTurn=currentTurn==="X"?"O":"X";
     setBoard(nb); setMoveLog(newLog);
-    if (newResult) {
-      setResult(newResult);
-      if (newResult!=="draw") setWinLine(newResult.line);
-      if (mode!=="online") await saveGameToFirestore(newResult, newLog, players);
-    } else { setTurn(newTurn); }
-    if (mode==="online") {
-      const {doc, updateDoc} = window._fb;
-      await updateDoc(doc(db,"rooms",onlineRoom), {board:nb, turn:newTurn, moveLog:newLog, result:newResult, winLine:newResult&&newResult!=="draw"?newResult.line:null});
-    }
-  }, [board,turn,result,mode,onlineRole,onlineRoom,moveLog,players,waitingForOpponent]);
+    if(newResult){setResult(newResult);if(newResult!=="draw")setWinLine(newResult.line);if(mode!=="online")await saveGameToFirestore(newResult,newLog,players);}
+    else{setTurn(newTurn);}
+    if(mode==="online"){const {doc,updateDoc}=window._fb;await updateDoc(doc(db,"rooms",onlineRoom),{board:nb,turn:newTurn,moveLog:newLog,result:newResult,winLine:newResult&&newResult!=="draw"?newResult.line:null});}
+  },[board,turn,result,mode,onlineRole,onlineRoom,moveLog,players,waitingForOpponent]);
 
   const resetGame = async () => {
-    setBoard(Array(9).fill(null)); setTurn("X"); setResult(null); setWinLine(null); setMoveLog([]);
-    resultHandledRef.current=false;
-    if (mode==="online"&&onlineRoom) {
-      const {doc, updateDoc} = window._fb;
-      await updateDoc(doc(db,"rooms",onlineRoom), {board:Array(9).fill(null),turn:"X",moveLog:[],result:null,winLine:null});
+    // Switch who starts next round
+    const nextStarter = roundStarter==="p1"?"p2":"p1";
+    setRoundStarter(nextStarter);
+    const p1IsX = p1Symbol==="X";
+    const p1GoesFirst = nextStarter==="p1";
+    const nextTurn = p1GoesFirst ? (p1IsX?"X":"O") : (p1IsX?"O":"X");
+    setBoard(Array(9).fill(null)); setTurn(mode==="online"?"X":nextTurn);
+    setResult(null); setWinLine(null); setMoveLog([]); resultHandledRef.current=false;
+    if(mode==="online"&&onlineRoom){
+      const {doc,updateDoc}=window._fb;
+      await updateDoc(doc(db,"rooms",onlineRoom),{board:Array(9).fill(null),turn:"X",moveLog:[],result:null,winLine:null});
     }
   };
 
@@ -628,26 +805,42 @@ export default function App() {
   };
 
   const startLocalGame = (m) => {
-    setMode(m); setPlayers({X:authUser.username, O:m==="ai"?"AI Bot 🤖":"Player O"});
-    setBoard(Array(9).fill(null)); setTurn("X"); setResult(null); setWinLine(null); setMoveLog([]);
-    setScores({X:0,O:0,draw:0}); resultHandledRef.current=false; setScreen("game");
+    setSetupMode(m);
+    setP1Name(authUser.username);
+    setP2Name(m==="ai"?"AI Bot 🤖":"");
+    setP1Symbol("X");
+    setFirstPlayer("p1");
+    setScreen("game-setup");
   };
 
-  const cellClass=(i)=>{ let c="cell"; if(board[i]) c+=` filled ${board[i]==="X"?"x-cell":"o-cell"}`; if(winLine?.includes(i)) c+=" win-cell"; if(animCell===i) c+=" anim"; return c; };
-  const getStatus=()=>{ if(mode==="online"&&waitingForOpponent) return "⏳ Waiting for opponent…"; if(!result) return `${turn==="X"?players.X:players.O}'s turn (${turn})`; if(result==="draw") return "It's a Draw! 🤝"; return `${result.winner==="X"?players.X:players.O} wins! 🎉`; };
-  const statusClass=()=>{ if(!result) return "status"; if(result==="draw") return "status draw"; return result.winner==="X"?"status win-x":"status win-o"; };
+  const beginGame = () => {
+    const p1IsX = p1Symbol==="X";
+    const xName = p1IsX ? (p1Name||authUser.username) : (p2Name||(setupMode==="ai"?"AI Bot 🤖":"Player 2"));
+    const oName = p1IsX ? (p2Name||(setupMode==="ai"?"AI Bot 🤖":"Player 2")) : (p1Name||authUser.username);
+    setMode(setupMode);
+    setPlayers({X:xName, O:oName});
+    // Who goes first
+    const p1GoesFirst = firstPlayer==="p1";
+    const firstTurn = p1GoesFirst ? (p1IsX?"X":"O") : (p1IsX?"O":"X");
+    setBoard(Array(9).fill(null)); setTurn(firstTurn); setResult(null); setWinLine(null); setMoveLog([]);
+    setScores({X:0,O:0,draw:0}); resultHandledRef.current=false;
+    setRoundStarter(firstPlayer);
+    setScreen("game");
+  };
 
-  const TopBar = ({backTo}) => (
+  const cellClass=(i)=>{let c="cell";if(board[i])c+=` filled ${board[i]==="X"?"x-cell":"o-cell"}`;if(winLine?.includes(i))c+=" win-cell";if(animCell===i)c+=" anim";return c;};
+  const getStatus=()=>{if(mode==="online"&&waitingForOpponent)return"⏳ Waiting for opponent…";if(!result)return`${turn==="X"?players.X:players.O}'s turn (${turn})`;if(result==="draw")return"It's a Draw! 🤝";return`${result.winner==="X"?players.X:players.O} wins! 🎉`;};
+  const statusClass=()=>{if(!result)return"status";if(result==="draw")return"status draw";return result.winner==="X"?"status win-x":"status win-o";};
+  const fmtTime=(ts)=>{if(!ts?.seconds) return "";const d=new Date(ts.seconds*1000);return d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});};
+
+  const TopBar = ({backTo, backLabel}) => (
     <div className="topbar">
       <div style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={()=>setScreen("profile")}>
-        <Avatar user={authUser}/>
-        <div>
-          <div className="topbar-name">{authUser?.username}</div>
-          <div className="topbar-email">{authUser?.email}</div>
-        </div>
+        <AvatarComp user={authUser}/>
+        <div><div className="topbar-name">{authUser?.username}</div><div className="topbar-email">{authUser?.email}</div></div>
       </div>
       <div style={{display:"flex",gap:6}}>
-        {backTo && <button className="btn btn-outline btn-sm" onClick={()=>setScreen(backTo)} style={{width:"auto"}}>←</button>}
+        {backTo&&<button className="btn btn-outline btn-sm" onClick={()=>setScreen(backTo)} style={{width:"auto"}}>{backLabel||"←"}</button>}
         <button className="btn btn-outline btn-sm" onClick={handleLogout} style={{width:"auto"}}>Out</button>
       </div>
     </div>
@@ -655,35 +848,61 @@ export default function App() {
 
   const BottomNav = () => (
     <div className="bottom-nav">
-      {[["🏠","home","Home"],["🎮","game-select","Play"],["💬","community","Chat"],["🏆","leaderboard","Ranks"],["👤","profile","Profile"]].map(([icon,s,label])=>(
-        <button key={s} className={`nav-item ${screen===s?"active":""}`} onClick={()=>{
-          if(s==="game-select") setScreen("home");
-          else if(s==="leaderboard") { loadLeaderboard(); setScreen("leaderboard"); }
-          else if(s==="profile") setScreen("profile");
-          else setScreen(s);
-        }}>
-          <span className="nav-icon">{icon}</span>{label}
+      {[["🏠","home","Home"],["🎮","play","Play"],["💬","messages","DMs"],["🏆","leaderboard","Ranks"],["👤","profile","Me"]].map(([icon,s,label])=>(
+        <button key={s} className={`nav-item ${(screen===s||(s==="play"&&screen==="home"))?"active":""}`}
+          onClick={()=>{
+            if(s==="play") setScreen("home");
+            else if(s==="leaderboard"){loadLeaderboard();setScreen("leaderboard");}
+            else if(s==="messages"){setScreen("messages");subscribeConversations();}
+            else setScreen(s);
+          }}>
+          <span style={{fontSize:"1.1rem"}}>{icon}</span>
+          {s==="messages"&&totalUnread>0&&<span className="nav-badge">{totalUnread>9?"9+":totalUnread}</span>}
+          <span style={{fontSize:".52rem",textTransform:"uppercase",letterSpacing:"1px"}}>{label}</span>
         </button>
       ))}
     </div>
   );
 
-  // ── LOADING ─────────────────────────────────────────────────────────────────
-  if (authLoading||!fbReady) return (
+  // ── LOADING ──────────────────────────────────────────────────────────────────
+  if(authLoading||!fbReady) return(
     <><style>{CSS}</style>
     <div className="app" style={{gap:16,textAlign:"center"}}>
       <Logo/>
-      {fbError ? <div className="alert alert-error" style={{maxWidth:300}}>Failed to connect. Check internet and try again.</div>
-        : <><div className="spinner" style={{width:28,height:28,margin:"0 auto"}}/><div style={{color:"var(--muted)",fontSize:".7rem",marginTop:8}}>Connecting…</div></>}
+      {fbError?<div className="alert alert-error" style={{maxWidth:300}}>Failed to connect. Check internet.</div>
+        :<><div className="spinner" style={{width:28,height:28,margin:"0 auto"}}/><div style={{color:"var(--muted)",fontSize:".7rem",marginTop:8}}>Connecting…</div></>}
+    </div></>
+  );
+
+  // ── WELCOME SCREEN ───────────────────────────────────────────────────────────
+  if(showWelcome) return(
+    <><style>{CSS}</style>
+    <div className="welcome-overlay">
+      <div className="welcome-box">
+        <div className="welcome-emoji">🎉</div>
+        <div className="welcome-title">Welcome to FavsTicTac Lovers!</div>
+        <div className="welcome-msg">
+          Hello <span className="welcome-name">{welcomeName}</span>! 👋<br/><br/>
+          Welcome to <span className="welcome-name">Adepoju Favour Emmanuel's</span> Tic Tac Toe game —<br/>
+          <span style={{color:"var(--o)",fontWeight:700}}>one of the best paper games you will ever see on your screen!</span> 🏆<br/><br/>
+          Play locally, challenge the AI, or compete with friends online. Your journey to becoming a Tic Tac Toe legend starts now! 🎮
+        </div>
+        <div style={{display:"flex",gap:10,marginBottom:16,justifyContent:"center",fontSize:"1.5rem"}}>
+          {"🎮🏆🔥⚡👑".split("").map((e,i)=><span key={i} style={{animation:`bounce ${0.8+i*0.15}s ease infinite alternate`}}>{e}</span>)}
+        </div>
+        <button className="btn btn-primary" onClick={()=>setShowWelcome(false)}>
+          🚀 Let's Play!
+        </button>
+      </div>
     </div></>
   );
 
   // ── AUTH ─────────────────────────────────────────────────────────────────────
-  if (!authUser) return (
+  if(!authUser) return(
     <><style>{CSS}</style>
     <div className="app">
       <div style={{width:"100%",maxWidth:400,display:"flex",flexDirection:"column",alignItems:"center",gap:20}}>
-        <div style={{textAlign:"center"}}><Logo/><div className="tagline">⚡ Sign in to play & track stats</div></div>
+        <div style={{textAlign:"center"}}><Logo/><div className="tagline">⚡ Sign in to play & connect</div></div>
         <div className="card gap">
           <div className="tabs">
             <button className={`tab ${authScreen==="login"?"active":""}`} onClick={()=>{setAuthScreen("login");setAuthError("");setForgotMsg("")}}>Sign In</button>
@@ -691,28 +910,19 @@ export default function App() {
             <button className={`tab ${authScreen==="forgot"?"active":""}`} onClick={()=>{setAuthScreen("forgot");setAuthError("");setForgotMsg("")}}>Reset PW</button>
           </div>
           {authError&&<div className="alert alert-error">{authError}</div>}
-
           {authScreen==="forgot"&&(<>
             <div style={{color:"var(--muted)",fontSize:".75rem",textAlign:"center"}}>Enter your email to receive a password reset link.</div>
             {forgotMsg&&<div className={`alert ${forgotMsg.startsWith("success")?"alert-success":"alert-error"}`}>{forgotMsg.split(":")[1]}</div>}
-            <div className="field"><div className="label">Email</div>
-              <input className="input" type="email" placeholder="you@example.com" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleForgotPassword()}/>
-            </div>
-            <button className="btn btn-primary" onClick={handleForgotPassword} disabled={forgotBusy}>
-              {forgotBusy?<><span className="spinner"/> Sending…</>:"📧 Send Reset Email"}
-            </button>
+            <div className="field"><div className="label">Email</div><input className="input" type="email" placeholder="you@example.com" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleForgotPassword()}/></div>
+            <button className="btn btn-primary" onClick={()=>handleForgotPassword()} disabled={forgotBusy}>{forgotBusy?<><span className="spinner"/> Sending…</>:"📧 Send Reset Email"}</button>
             <button className="btn-ghost" style={{textAlign:"center"}} onClick={()=>setAuthScreen("login")}>← Back to Sign In</button>
           </>)}
-
           {authScreen!=="forgot"&&(<>
             {authScreen==="register"&&<div className="field"><div className="label">Username</div><input className="input" placeholder="e.g. GameMaster99" value={authForm.username} onChange={e=>setAuthForm(f=>({...f,username:e.target.value}))}/></div>}
             <div className="field"><div className="label">Email</div><input className="input" type="email" placeholder="you@example.com" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))}/></div>
             <div className="field"><div className="label">Password</div>
               <div className="input-wrap">
-                <input className="input" type={showPw?"text":"password"} placeholder="••••••••" value={authForm.password}
-                  onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))}
-                  onKeyDown={e=>e.key==="Enter"&&(authScreen==="login"?handleLogin():handleRegister())}
-                  style={{paddingRight:38}}/>
+                <input className="input" type={showPw?"text":"password"} placeholder="••••••••" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&(authScreen==="login"?handleLogin():handleRegister())} style={{paddingRight:38}}/>
                 <button className="eye-btn" onClick={()=>setShowPw(p=>!p)}><EyeIcon show={showPw}/></button>
               </div>
             </div>
@@ -728,10 +938,71 @@ export default function App() {
     </div></>
   );
 
-  // ── HOME ─────────────────────────────────────────────────────────────────────
-  if (screen==="home") return (
+  // ── GAME SETUP ────────────────────────────────────────────────────────────────
+  if(screen==="game-setup") return(
     <><style>{CSS}</style>
-    <div className="app"><div style={{width:"100%",maxWidth:400}}>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
+      <TopBar backTo="home"/>
+      <div style={{textAlign:"center",marginBottom:16}}><Logo small/>
+        <div className="tagline">{setupMode==="ai"?"🤖 vs AI Setup":"🎮 Local 2-Player Setup"}</div>
+      </div>
+      <div className="card gap">
+
+        {/* Player 1 Name */}
+        <div className="field">
+          <div className="label">👤 Player 1 Name</div>
+          <input className="input" placeholder={authUser.username} value={p1Name} onChange={e=>setP1Name(e.target.value)}/>
+        </div>
+
+        {/* Player 2 Name — only for local */}
+        {setupMode==="local"&&(
+          <div className="field">
+            <div className="label">👤 Player 2 Name</div>
+            <input className="input" placeholder="Player 2" value={p2Name} onChange={e=>setP2Name(e.target.value)}/>
+          </div>
+        )}
+
+        {/* Choose Symbol — only once at beginning */}
+        <div className="field">
+          <div className="label">🎯 Player 1 plays as (set once)</div>
+          <div className="symbol-pick">
+            <button className={`symbol-btn ${p1Symbol==="X"?"active-x":""}`} onClick={()=>setP1Symbol("X")}>
+              ✕<div style={{fontSize:".65rem",fontFamily:"'Space Mono',monospace",marginTop:4,color:p1Symbol==="X"?"var(--x)":"var(--muted)"}}>Play as X</div>
+            </button>
+            <button className={`symbol-btn ${p1Symbol==="O"?"active-o":""}`} onClick={()=>setP1Symbol("O")}>
+              ○<div style={{fontSize:".65rem",fontFamily:"'Space Mono',monospace",marginTop:4,color:p1Symbol==="O"?"var(--o)":"var(--muted)"}}>Play as O</div>
+            </button>
+          </div>
+        </div>
+
+        {/* Who goes first — only for first round */}
+        <div className="field">
+          <div className="label">⚡ Who goes first? (1st round only)</div>
+          <div className="first-pick">
+            <button className={`first-btn ${firstPlayer==="p1"?"active":""}`} onClick={()=>setFirstPlayer("p1")}>
+              👤 {p1Name||authUser.username||"Player 1"}<br/>
+              <span style={{fontSize:".6rem",opacity:.7}}>goes first</span>
+            </button>
+            <button className={`first-btn ${firstPlayer==="p2"?"active":""}`} onClick={()=>setFirstPlayer("p2")}>
+              👤 {p2Name||(setupMode==="ai"?"AI Bot":"Player 2")}<br/>
+              <span style={{fontSize:".6rem",opacity:.7}}>goes first</span>
+            </button>
+          </div>
+          <div style={{fontSize:".65rem",color:"var(--muted)",textAlign:"center",marginTop:4}}>
+            🔄 After each round, turns automatically swap
+          </div>
+        </div>
+
+        <button className="btn btn-primary" onClick={beginGame}>▶ Start Game</button>
+        <button className="btn btn-outline" onClick={()=>setScreen("home")}>← Back</button>
+      </div>
+    </div></div></>
+  );
+
+  // ── HOME ─────────────────────────────────────────────────────────────────────
+  if(screen==="home") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:20}}><Logo/><div className="tagline">Welcome back, {authUser.username}! 🎮</div></div>
       <div className="card gap">
@@ -741,8 +1012,9 @@ export default function App() {
         <div className="divider">explore</div>
         <div className="row">
           <button className="btn btn-outline" style={{flex:1}} onClick={()=>{loadLeaderboard();setScreen("leaderboard")}}>🏆 Ranks</button>
-          <button className="btn btn-outline" style={{flex:1}} onClick={()=>setScreen("community")}>💬 Chat</button>
-          <button className="btn btn-outline" style={{flex:1}} onClick={()=>setScreen("profile")}>👤 Profile</button>
+          <button className="btn btn-outline" style={{flex:1,position:"relative"}} onClick={()=>{setScreen("messages");subscribeConversations();}}>
+            💬 Messages {totalUnread>0&&<span style={{background:"var(--error)",color:"#fff",borderRadius:50,padding:"1px 5px",fontSize:".6rem",marginLeft:4}}>{totalUnread}</span>}
+          </button>
         </div>
       </div>
       <BottomNav/>
@@ -750,16 +1022,16 @@ export default function App() {
   );
 
   // ── ONLINE LOBBY ─────────────────────────────────────────────────────────────
-  if (screen==="online-lobby") return (
+  if(screen==="online-lobby") return(
     <><style>{CSS}</style>
-    <div className="app"><div style={{width:"100%",maxWidth:400}}>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar backTo="home"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🌐 Online Multiplayer</div></div>
       <div className="card gap">
         <div className="alert alert-info">Share your room code with a friend on another device!</div>
         {roomError&&<div className="alert alert-error">{roomError}</div>}
         <button className="btn btn-primary" onClick={createRoom}>🏠 Create Room</button>
-        <div className="divider">or join a friend</div>
+        <div className="divider">or join</div>
         <div className="field"><div className="label">Room Code</div>
           <input className="input" placeholder="E.g. ABC123" value={roomInput} onChange={e=>setRoomInput(e.target.value.toUpperCase())} style={{textAlign:"center",letterSpacing:4,fontWeight:700,fontSize:"1rem"}} onKeyDown={e=>e.key==="Enter"&&joinRoom()}/>
         </div>
@@ -770,9 +1042,9 @@ export default function App() {
   );
 
   // ── GAME ─────────────────────────────────────────────────────────────────────
-  if (screen==="game") return (
+  if(screen==="game") return(
     <><style>{CSS}</style>
-    <div className="app"><div style={{width:"100%",maxWidth:400}}>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar backTo="home"/>
       {mode==="online"&&onlineRoom&&(
         <div className="room-badge">
@@ -788,11 +1060,31 @@ export default function App() {
           <div className="spinner" style={{width:28,height:28,margin:"0 auto"}}/>
         </div><button className="btn btn-outline" onClick={goHome} style={{marginTop:16}}>← Cancel</button></div>
       ):(<>
+        {/* Chat popup for opponent messages */}
+        {chatPopup&&(
+          <div className="chat-popup">
+            <div className="chat-popup-name">💬 {chatPopup.username}</div>
+            {chatPopup.isVoice && chatPopup.audioBase64
+              ? <button className="voice-msg-btn" onClick={()=>playAudio(chatPopup.audioBase64)}>▶ Play voice note 🎙️</button>
+              : <div className="chat-popup-text">{chatPopup.text}</div>
+            }
+          </div>
+        )}
         <div className="scoreboard">
           <div className={`score-box ${!result&&turn==="X"?"active":""}`}><div className="score-name">{players.X}</div><div className="score-num score-x">{scores.X}</div><div className="score-name" style={{color:"var(--x)"}}>X</div></div>
           <div style={{textAlign:"center"}}><div style={{color:"var(--muted)",fontSize:".65rem"}}>VS</div><div style={{color:"var(--accent)",fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1rem"}}>{scores.draw}</div><div style={{color:"var(--muted)",fontSize:".6rem"}}>draws</div></div>
           <div className={`score-box ${!result&&turn==="O"?"active":""}`}><div className="score-name">{players.O}</div><div className="score-num score-o">{scores.O}</div><div className="score-name" style={{color:"var(--o)"}}>O</div></div>
         </div>
+        {mode!=="online"&&result&&(
+          <div className="round-indicator">
+            🔄 Next round: <span style={{color:"var(--accent)"}}>
+              {roundStarter==="p1"
+                ? (p2Name||(setupMode==="ai"?"AI Bot":"Player 2"))
+                : (p1Name||authUser.username)
+              } goes first
+            </span>
+          </div>
+        )}
         <div className="board">{board.map((v,i)=>(<div key={i} className={cellClass(i)} onClick={()=>handleCellClick(i)}>{v==="X"&&<XIcon/>}{v==="O"&&<OIcon/>}</div>))}</div>
         <div className={statusClass()}>{getStatus()}</div>
         <div className="row" style={{marginTop:10}}>
@@ -800,74 +1092,201 @@ export default function App() {
           <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={goHome}>⌂ Home</button>
           {mode==="online"&&<button className="btn btn-outline btn-sm" style={{flex:1}} onClick={()=>setShowGameChat(p=>!p)}>💬 Chat</button>}
         </div>
-        {/* In-game chat for online mode */}
         {mode==="online"&&showGameChat&&(
           <div className="game-chat">
-            <div className="game-chat-header">💬 Game Chat</div>
+            <div className="game-chat-header">
+              <span>💬 Game Chat</span>
+              {isRecording&&<span style={{color:"var(--x)",fontSize:".65rem"}}>🔴 {recordingTime}s recording…</span>}
+            </div>
             <div className="game-chat-msgs">
-              {gameChatMsgs.length===0&&<div style={{color:"var(--muted)",fontSize:".68rem",textAlign:"center",padding:"8px 0"}}>No messages yet. Say hi! 👋</div>}
+              {gameChatMsgs.length===0&&<div style={{color:"var(--muted)",fontSize:".68rem",textAlign:"center",padding:"8px 0"}}>Say hi! 👋</div>}
               {gameChatMsgs.map(m=>(
-                <div key={m.id} className="game-chat-msg">
-                  <span style={{color:m.uid===authUser.uid?"var(--accent)":"var(--o)",fontWeight:700,fontSize:".65rem"}}>{m.uid===authUser.uid?"You":m.username}: </span>
-                  <span>{m.text}</span>
+                <div key={m.id} className={`game-chat-msg ${m.uid===authUser.uid?"mine":"other"}`}>
+                  <span style={{color:m.uid===authUser.uid?"var(--accent)":"var(--o)",fontWeight:700,fontSize:".62rem"}}>{m.uid===authUser.uid?"You":m.username}: </span>
+                  {m.isVoice && m.audioBase64
+                    ? <button className="voice-msg-btn" onClick={()=>playAudio(m.audioBase64)}>▶ {m.uid===authUser.uid?"Your":"Opponent's"} voice note 🎙️</button>
+                    : <span>{m.text}</span>
+                  }
                 </div>
               ))}
+              <div ref={gameChatEndRef}/>
             </div>
-            <div className="emoji-row" style={{padding:"4px 8px"}}>
-              {EMOJIS.map(e=>(<button key={e} className="emoji-btn" onClick={()=>sendGameChat(e)}>{e}</button>))}
-            </div>
+            <div className="emoji-row" style={{padding:"4px 8px"}}>{EMOJIS.map(e=>(<button key={e} className="emoji-btn" onClick={()=>sendGameChat(e)}>{e}</button>))}</div>
             <div className="game-chat-input">
-              <input className="input" style={{flex:1,padding:"8px 10px",fontSize:".75rem"}} placeholder="Type message…" value={gameChatInput} onChange={e=>setGameChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendGameChat(gameChatInput)}/>
-              <button className="btn btn-primary btn-sm" onClick={()=>sendGameChat(gameChatInput)} disabled={!gameChatInput.trim()}>Send</button>
+              <input className="input" style={{flex:1,padding:"8px 10px",fontSize:".75rem"}} placeholder="Message…" value={gameChatInput} onChange={e=>setGameChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendGameChat(gameChatInput)} disabled={isRecording}/>
+              <button
+                className={`voice-btn ${isRecording?"recording":"idle"}`}
+                onMouseDown={startRecording} onMouseUp={stopRecording}
+                onTouchStart={e=>{e.preventDefault();startRecording();}} onTouchEnd={e=>{e.preventDefault();stopRecording();}}
+                title={isRecording?"Release to send":"Hold to record"}
+              >🎙️</button>
+              <button className="btn btn-primary btn-sm" onClick={()=>sendGameChat(gameChatInput)} disabled={!gameChatInput.trim()||isRecording}>Send</button>
+            </div>
+            <div style={{padding:"4px 8px 6px",fontSize:".6rem",color:"var(--muted)",textAlign:"center"}}>
+              Hold 🎙️ to record · Release to send
             </div>
           </div>
         )}
-        {moveLog.length>0&&(
-          <div style={{marginTop:14}}>
-            <div className="label" style={{marginBottom:6}}>Move Log</div>
-            <div className="log">{[...moveLog].reverse().map((m,i)=>(<div key={i} className="log-entry"><span className={m.player==="X"?"log-x":"log-o"}>●</span><span className={m.player==="X"?"log-x":"log-o"}>{m.player==="X"?players.X:players.O}</span><span style={{color:"var(--muted)"}}>→ Cell {m.cell+1}</span></div>))}</div>
-          </div>
-        )}
+        {moveLog.length>0&&(<div style={{marginTop:12}}>
+          <div className="label" style={{marginBottom:6}}>Move Log</div>
+          <div className="log">{[...moveLog].reverse().map((m,i)=>(<div key={i} className="log-entry"><span className={m.player==="X"?"log-x":"log-o"}>●</span><span className={m.player==="X"?"log-x":"log-o"}>{m.player==="X"?players.X:players.O}</span><span style={{color:"var(--muted)"}}>→ Cell {m.cell+1}</span></div>))}</div>
+        </div>)}
       </>)}
     </div></div></>
   );
 
-  // ── COMMUNITY CHAT ────────────────────────────────────────────────────────────
-  if (screen==="community") return (
+  // ── MESSAGES (Inbox + Search) ─────────────────────────────────────────────────
+  if(screen==="messages") return(
     <><style>{CSS}</style>
-    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar/>
-      <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">💬 Community Chat</div></div>
-      <div className="card" style={{padding:"12px"}}>
-        <div className="chat-messages">
-          {chatMessages.length===0&&<div style={{textAlign:"center",color:"var(--muted)",padding:"32px 0",fontSize:".78rem"}}>No messages yet. Start the conversation! 👋</div>}
-          {chatMessages.map(m=>(
-            <div key={m.id} className={`chat-msg ${m.uid===authUser.uid?"mine":""}`}>
-              <Avatar user={{username:m.username, photoURL:m.photoURL}} size="chat"/>
-              <div>
-                {m.uid!==authUser.uid&&<div className="chat-name">{m.username}</div>}
-                <div className={`chat-bubble ${m.uid===authUser.uid?"mine":"other"}`}>{m.text}</div>
+      <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">💬 Messages</div></div>
+      <div className="card">
+        <div className="tabs">
+          <button className={`tab ${msgTab==="inbox"?"active":""}`} onClick={()=>setMsgTab("inbox")}>📥 Inbox {totalUnread>0&&`(${totalUnread})`}</button>
+          <button className={`tab ${msgTab==="search"?"active":""}`} onClick={()=>setMsgTab("search")}>🔍 Find Players</button>
+        </div>
+
+        {msgTab==="inbox"&&(<>
+          {conversations.length===0&&(
+            <div style={{textAlign:"center",color:"var(--muted)",padding:"32px 0",fontSize:".78rem"}}>
+              No messages yet.<br/>Search for a player to start chatting! 🎮
+            </div>
+          )}
+          {conversations.map(c=>{
+            const otherId = c.members.find(m=>m!==authUser.uid);
+            const otherName = c.memberNames?.[otherId]||"Player";
+            const otherPhoto = c.memberPhotos?.[otherId]||null;
+            const unread = c[`unread_${authUser.uid}`]||0;
+            return(
+              <div key={c.id} className="convo-item" onClick={()=>{setActiveConvo({uid:otherId,username:otherName,photoURL:otherPhoto});setScreen("private-chat");}}>
+                <AvatarComp user={{username:otherName,photoURL:otherPhoto}} size="md"/>
+                <div className="convo-info">
+                  <div className="convo-name">{otherName}</div>
+                  <div className="convo-last">{c.lastMsg||"Start a conversation"}</div>
+                </div>
+                {unread>0&&<div className="convo-badge">{unread}</div>}
               </div>
+            );
+          })}
+        </>)}
+
+        {msgTab==="search"&&(<>
+          <div className="row" style={{marginBottom:12}}>
+            <input className="input" style={{flex:1}} placeholder="Search by username…" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchUsers()}/>
+            <button className="btn btn-primary btn-sm" onClick={searchUsers} disabled={searchBusy}>{searchBusy?<span className="spinner"/>:"🔍"}</button>
+          </div>
+          {searchResults.length===0&&searchQuery&&!searchBusy&&(
+            <div style={{textAlign:"center",color:"var(--muted)",fontSize:".75rem",padding:"16px 0"}}>No players found for "{searchQuery}"</div>
+          )}
+          {searchResults.map(u=>(
+            <div key={u.uid} className="player-item" onClick={()=>viewPlayerProfile(u)}>
+              <AvatarComp user={u} size="md"/>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:".82rem"}}>{u.username}</div>
+                <div style={{fontSize:".65rem",color:"var(--muted)"}}>Tap to view profile</div>
+              </div>
+              <button className="btn btn-o btn-sm" onClick={e=>{e.stopPropagation();openConversation(u);}}>💬 Message</button>
             </div>
           ))}
-          <div ref={chatEndRef}/>
-        </div>
-        <div className="emoji-row">
-          {EMOJIS.map(e=>(<button key={e} className="emoji-btn" onClick={()=>sendChatMessage(e)}>{e}</button>))}
-        </div>
-        <div className="chat-input-row">
-          <input className="input" style={{flex:1,padding:"9px 12px",fontSize:".78rem"}} placeholder="Say something…" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChatMessage(chatInput)}/>
-          <button className="btn btn-primary btn-sm" onClick={()=>sendChatMessage(chatInput)} disabled={!chatInput.trim()||chatSending}>
-            {chatSending?<span className="spinner"/>:"Send"}
-          </button>
-        </div>
+        </>)}
       </div>
       <BottomNav/>
     </div></div></>
   );
 
-  // ── LEADERBOARD ──────────────────────────────────────────────────────────────
-  if (screen==="leaderboard") return (
+  // ── PRIVATE CHAT ──────────────────────────────────────────────────────────────
+  if(screen==="private-chat"&&activeConvo) return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
+      {/* Chat header */}
+      <div className="topbar">
+        <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>viewPlayerProfile(activeConvo)}>
+          <AvatarComp user={activeConvo} size="md"/>
+          <div>
+            <div className="topbar-name">{activeConvo.username}</div>
+            <div className="topbar-email" style={{color:"var(--o)"}}>Tap to view profile</div>
+          </div>
+        </div>
+        <button className="btn btn-outline btn-sm" onClick={()=>{setScreen("messages");setActiveConvo(null);setPrivMessages([]);}} style={{width:"auto"}}>← Back</button>
+      </div>
+
+      <div className="card" style={{padding:"12px",display:"flex",flexDirection:"column",height:"calc(100vh - 180px)",minHeight:400}}>
+        {/* Messages */}
+        <div className="chat-messages" style={{flex:1}}>
+          {privMessages.length===0&&(
+            <div style={{textAlign:"center",color:"var(--muted)",padding:"32px 0",fontSize:".75rem"}}>
+              No messages yet.<br/>Say hello to {activeConvo.username}! 👋
+            </div>
+          )}
+          {privMessages.map(m=>(
+            <div key={m.id} className={`chat-msg ${m.senderUid===authUser.uid?"mine":""}`}>
+              {m.senderUid!==authUser.uid&&<AvatarComp user={{username:m.senderName,photoURL:m.senderPhoto}} size="sm"/>}
+              <div>
+                <div className={`chat-bubble ${m.senderUid===authUser.uid?"mine":"other"}`}>{m.text}</div>
+                <div className="chat-time">{fmtTime(m.createdAt)}</div>
+              </div>
+            </div>
+          ))}
+          <div ref={privEndRef}/>
+        </div>
+
+        {/* Emoji row */}
+        <div className="emoji-row">{EMOJIS.map(e=>(<button key={e} className="emoji-btn" onClick={()=>{setPrivInput(p=>p+e)}}>{e}</button>))}</div>
+
+        {/* Input */}
+        <div className="chat-input-row">
+          <input className="input" style={{flex:1,padding:"9px 12px",fontSize:".78rem"}} placeholder="Type a message…" value={privInput} onChange={e=>setPrivInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendPrivMessage()}/>
+          <button className="btn btn-primary btn-sm" onClick={sendPrivMessage} disabled={!privInput.trim()||privSending}>
+            {privSending?<span className="spinner"/>:"Send"}
+          </button>
+        </div>
+      </div>
+    </div></div></>
+  );
+
+  // ── VIEW PLAYER PROFILE ───────────────────────────────────────────────────────
+  if(screen==="view-profile"&&viewingProfile) return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:420}}>
+      <TopBar backTo="messages"/>
+      <div className="card gap">
+        <div className="profile-view">
+          <AvatarComp user={viewingProfile} size="lg"/>
+          <div className="profile-view-name">{viewingProfile.username}</div>
+          <div style={{color:"var(--muted)",fontSize:".72rem",marginTop:4}}>FavsTicTac Lovers Player</div>
+        </div>
+
+        {/* Stats */}
+        <div className="profile-view-stats">
+          {[["🏆",viewingProfile.wins||0,"Wins","var(--o)"],["🤝",viewingProfile.draws||0,"Draws","var(--accent)"],["🎮",viewingProfile.games||0,"Games","var(--muted)"]].map(([icon,val,lbl,color])=>(
+            <div key={lbl} className="stat-box">
+              <div style={{fontSize:"1rem"}}>{icon}</div>
+              <div className="stat-val" style={{color}}>{val}</div>
+              <div className="stat-lbl">{lbl}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Rank */}
+        {(()=>{
+          const rank = leaderboard.findIndex(p=>p.username===viewingProfile.username)+1;
+          return rank>0?(
+            <div style={{textAlign:"center",background:"#16161f",borderRadius:8,padding:"10px",border:"1px solid var(--border)"}}>
+              <span style={{color:"var(--muted)",fontSize:".7rem"}}>Leaderboard Rank </span>
+              <span style={{color:"var(--accent)",fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1.1rem"}}>#{rank}</span>
+            </div>
+          ):null;
+        })()}
+
+        <button className="btn btn-primary" onClick={()=>{openConversation(viewingProfile);}}>💬 Send Message</button>
+        <button className="btn btn-outline" onClick={()=>setScreen("messages")}>← Back to Messages</button>
+      </div>
+    </div></div></>
+  );
+
+  // ── LEADERBOARD ───────────────────────────────────────────────────────────────
+  if(screen==="leaderboard") return(
     <><style>{CSS}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar/>
@@ -876,9 +1295,10 @@ export default function App() {
         <div className="lb-row lb-header"><span>#</span><span></span><span>Player</span><span style={{textAlign:"center"}}>W</span><span style={{textAlign:"center"}}>D</span><span style={{textAlign:"center"}}>G</span></div>
         {leaderboard.length===0&&<div style={{textAlign:"center",color:"var(--muted)",padding:"28px 0",fontSize:".78rem"}}>No games yet. Be the first! 🎯</div>}
         {leaderboard.map((p,i)=>(
-          <div key={p.id} className="lb-row" style={{background:p.username===authUser.username?"rgba(255,215,0,.04)":"transparent"}}>
+          <div key={p.id} className="lb-row" style={{cursor:"pointer",background:p.username===authUser.username?"rgba(255,215,0,.04)":"transparent"}}
+            onClick={()=>{if(p.id!==authUser.uid) viewPlayerProfile({uid:p.id,...p});}}>
             <span className={`lb-rank ${i===0?"gold":i===1?"silver":i===2?"bronze":""}`}>{i+1}</span>
-            <Avatar user={{username:p.username, photoURL:p.photoURL}} size="chat"/>
+            <AvatarComp user={{username:p.username,photoURL:p.photoURL}} size="sm"/>
             <span style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:p.username===authUser.username?"var(--accent)":"inherit"}}>{p.username}{p.username===authUser.username?" (you)":""}</span>
             <span style={{textAlign:"center",color:"var(--o)"}}>{p.wins||0}</span>
             <span style={{textAlign:"center",color:"var(--accent)"}}>{p.draws||0}</span>
@@ -895,13 +1315,13 @@ export default function App() {
   );
 
   // ── HISTORY ───────────────────────────────────────────────────────────────────
-  if (screen==="history") return (
+  if(screen==="history") return(
     <><style>{CSS}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="leaderboard"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">📜 {authUser.username}'s History</div></div>
       <div className="card">
-        {myHistory.length===0&&<div style={{textAlign:"center",color:"var(--muted)",padding:"28px 0",fontSize:".78rem"}}>No games yet. Play your first game!</div>}
+        {myHistory.length===0&&<div style={{textAlign:"center",color:"var(--muted)",padding:"28px 0",fontSize:".78rem"}}>No games yet!</div>}
         <div style={{maxHeight:420,overflowY:"auto",scrollbarWidth:"thin"}}>
           {myHistory.map(g=>(
             <div key={g.id} className="hist-item">
@@ -924,17 +1344,17 @@ export default function App() {
   );
 
   // ── PROFILE ───────────────────────────────────────────────────────────────────
-  if (screen==="profile") return (
+  if(screen==="profile") return(
     <><style>{CSS}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">👤 My Profile</div></div>
       <div className="card gap" style={{maxHeight:"80vh",overflowY:"auto",scrollbarWidth:"thin"}}>
 
-        {/* Avatar + Info */}
+        {/* Avatar */}
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,paddingBottom:14,borderBottom:"1px solid var(--border)"}}>
           <input type="file" ref={fileInputRef} accept="image/*" style={{display:"none"}} onChange={handlePhotoUpload}/>
-          <div onClick={()=>fileInputRef.current?.click()}><Avatar user={authUser} size="lg"/></div>
+          <div onClick={()=>fileInputRef.current?.click()}><AvatarComp user={authUser} size="lg"/></div>
           {uploadingPhoto&&<div style={{color:"var(--muted)",fontSize:".7rem"}}><span className="spinner"/> Uploading…</div>}
           {photoMsg&&<div className={`alert ${photoMsg.startsWith("success")?"alert-success":"alert-error"}`} style={{fontSize:".7rem"}}>{photoMsg.split(":")[1]}</div>}
           <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1.1rem"}}>{authUser.username}</div>
@@ -943,20 +1363,23 @@ export default function App() {
         </div>
 
         {/* Stats */}
-        <div className="section">
-          <div className="section-title">📊 My Stats</div>
-          {(()=>{ const me=leaderboard.find(p=>p.username===authUser.username); return me?(
-            <div className="stats-grid">
-              {[["🏆 Wins",me.wins||0,"var(--o)"],["🤝 Draws",me.draws||0,"var(--accent)"],["🎮 Games",me.games||0,"var(--muted)"]].map(([l,v,c])=>(
-                <div key={l} className="stat-box"><div className="stat-val" style={{color:c}}>{v}</div><div className="stat-lbl">{l}</div></div>
+        <div>
+          <div className="label" style={{marginBottom:8}}>📊 My Stats</div>
+          {(()=>{const me=leaderboard.find(p=>p.username===authUser.username);return me?(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              {[["🏆",me.wins||0,"Wins","var(--o)"],["🤝",me.draws||0,"Draws","var(--accent)"],["🎮",me.games||0,"Games","var(--muted)"]].map(([icon,v,l,c])=>(
+                <div key={l} style={{background:"#16161f",borderRadius:8,padding:"10px 6px",textAlign:"center",border:"1px solid var(--border)"}}>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c}}>{v}</div>
+                  <div style={{fontSize:".6rem",color:"var(--muted)"}}>{icon} {l}</div>
+                </div>
               ))}
             </div>
-          ):<div style={{color:"var(--muted)",fontSize:".75rem"}}>Play a game to see your stats!</div>; })()}
+          ):<div style={{color:"var(--muted)",fontSize:".75rem"}}>Play a game to see your stats!</div>})()}
         </div>
 
         {/* Change Username */}
-        <div className="section">
-          <div className="section-title">✏️ Change Username</div>
+        <div style={{borderTop:"1px solid var(--border)",paddingTop:14}}>
+          <div className="label" style={{marginBottom:8}}>✏️ Change Username</div>
           {editUsernameMsg&&<div className={`alert ${editUsernameMsg.startsWith("success")?"alert-success":"alert-error"}`} style={{marginBottom:8,fontSize:".7rem"}}>{editUsernameMsg.split(":")[1]}</div>}
           <div className="row">
             <input className="input" style={{flex:1}} placeholder={`Current: ${authUser.username}`} value={editUsername} onChange={e=>setEditUsername(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleEditUsername()}/>
@@ -965,8 +1388,8 @@ export default function App() {
         </div>
 
         {/* Change Email */}
-        <div className="section">
-          <div className="section-title">📧 Change Email</div>
+        <div style={{borderTop:"1px solid var(--border)",paddingTop:14}}>
+          <div className="label" style={{marginBottom:8}}>📧 Change Email</div>
           {editEmailMsg&&<div className={`alert ${editEmailMsg.startsWith("success")?"alert-success":"alert-error"}`} style={{marginBottom:8,fontSize:".7rem"}}>{editEmailMsg.split(":")[1]}</div>}
           <div className="gap">
             <input className="input" type="email" placeholder="New email address" value={editEmail} onChange={e=>setEditEmail(e.target.value)}/>
@@ -976,21 +1399,16 @@ export default function App() {
         </div>
 
         {/* Reset Password */}
-        <div className="section">
-          <div className="section-title">🔑 Reset Password</div>
+        <div style={{borderTop:"1px solid var(--border)",paddingTop:14}}>
+          <div className="label" style={{marginBottom:8}}>🔑 Reset Password</div>
           <div style={{color:"var(--muted)",fontSize:".72rem",marginBottom:10}}>Send a reset link to <span style={{color:"var(--accent)"}}>{authUser.email}</span></div>
           {forgotMsg&&<div className={`alert ${forgotMsg.startsWith("success")?"alert-success":"alert-error"}`} style={{marginBottom:8,fontSize:".7rem"}}>{forgotMsg.split(":")[1]}</div>}
-          <button className="btn btn-outline" onClick={async()=>{
-            setForgotMsg(""); setForgotBusy(true);
-            try { const {sendPasswordResetEmail}=window._fb; await sendPasswordResetEmail(window._fb.auth,authUser.email); setForgotMsg("success:Reset email sent! Check your inbox 📧"); }
-            catch(e) { setForgotMsg("error:Failed to send reset email."); }
-            setForgotBusy(false);
-          }} disabled={forgotBusy}>{forgotBusy?<><span className="spinner"/> Sending…</>:"📧 Send Password Reset Email"}</button>
+          <button className="btn btn-outline" onClick={()=>handleForgotPassword(authUser.email)} disabled={forgotBusy}>{forgotBusy?<><span className="spinner"/> Sending…</>:"📧 Send Password Reset Email"}</button>
         </div>
 
         {/* Account Info */}
-        <div className="section">
-          <div className="section-title">🆔 Account Info</div>
+        <div style={{borderTop:"1px solid var(--border)",paddingTop:14}}>
+          <div className="label" style={{marginBottom:8}}>🆔 Account Info</div>
           <div style={{background:"#16161f",borderRadius:8,padding:10,fontSize:".7rem",display:"flex",flexDirection:"column",gap:6}}>
             <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"var(--muted)"}}>Username</span><span style={{fontWeight:700}}>{authUser.username}</span></div>
             <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"var(--muted)"}}>Email</span><span style={{fontWeight:700,fontSize:".65rem"}}>{authUser.email}</span></div>
@@ -998,7 +1416,7 @@ export default function App() {
           </div>
         </div>
 
-        <button className="btn btn-outline" onClick={()=>setScreen("history")}>📜 View Game History</button>
+        <button className="btn btn-outline" onClick={()=>{loadMyHistory(authUser.uid);setScreen("history")}}>📜 View Game History</button>
         <button className="btn btn-x" onClick={handleLogout}>🚪 Sign Out</button>
       </div>
       <BottomNav/>
