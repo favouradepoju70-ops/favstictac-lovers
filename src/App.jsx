@@ -335,6 +335,12 @@ export default function App() {
   const [showGameChat, setShowGameChat] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeName, setWelcomeName] = useState("");
+  // Feedback
+  const [feedbackType, setFeedbackType] = useState("general");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState("");
   // Game setup
   const [setupMode, setSetupMode] = useState("local");
   const [p1Name, setP1Name] = useState("");
@@ -572,6 +578,22 @@ export default function App() {
       setForgotMsg("success:Reset email sent! Check your inbox 📧");
     } catch(e) { setForgotMsg("error:"+(e.code==="auth/user-not-found"?"No account with this email.":e.message)); }
     setForgotBusy(false);
+  };
+
+  const submitFeedback = async () => {
+    if(!feedbackText.trim()){setFeedbackMsg("error:Please write your feedback.");return;}
+    setFeedbackBusy(true); setFeedbackMsg("");
+    try {
+      const {collection, addDoc, serverTimestamp} = window._fb;
+      await addDoc(collection(db,"feedback"),{
+        text:feedbackText.trim(), type:feedbackType, rating:feedbackRating,
+        uid:authUser.uid, username:authUser.username, email:authUser.email,
+        createdAt:serverTimestamp(),
+      });
+      setFeedbackText(""); setFeedbackRating(5); setFeedbackType("general");
+      setFeedbackMsg("success:Thank you for your feedback! 🙏");
+    } catch { setFeedbackMsg("error:Failed to submit. Try again."); }
+    setFeedbackBusy(false);
   };
 
   const handleLogout = async () => {
@@ -1016,6 +1038,10 @@ export default function App() {
             💬 Messages {totalUnread>0&&<span style={{background:"var(--error)",color:"#fff",borderRadius:50,padding:"1px 5px",fontSize:".6rem",marginLeft:4}}>{totalUnread}</span>}
           </button>
         </div>
+        <div className="row">
+          <button className="btn btn-outline" style={{flex:1}} onClick={()=>setScreen("feedback")}>📝 Feedback</button>
+          <button className="btn btn-outline" style={{flex:1}} onClick={()=>setScreen("privacy")}>🔒 Privacy Policy</button>
+        </div>
       </div>
       <BottomNav/>
     </div></div></>
@@ -1427,6 +1453,112 @@ export default function App() {
   );
 
   // ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
+  // ── PRIVACY POLICY ───────────────────────────────────────────────────────────
+  if(screen==="privacy") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="home"/>
+      <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🔒 Privacy Policy</div></div>
+      <div className="card" style={{maxHeight:"78vh",overflowY:"auto",scrollbarWidth:"thin"}}>
+        <div style={{fontSize:".72rem",lineHeight:1.8,display:"flex",flexDirection:"column",gap:14}}>
+
+          <div style={{textAlign:"center",borderBottom:"1px solid var(--border)",paddingBottom:12}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1rem",color:"var(--accent)"}}>FavsTicTac Lovers</div>
+            <div style={{color:"var(--muted)",fontSize:".65rem",marginTop:4}}>Privacy Policy · Last updated: May 2026</div>
+          </div>
+
+          {[
+            ["📋 Introduction", "FavsTicTac Lovers ('we', 'our', 'us') is owned and operated by Adepoju Favour Emmanuel. This Privacy Policy explains how we collect, use, and protect your personal information when you use our app at favstictac-lovers.netlify.app."],
+            ["📊 Information We Collect", "We collect: (1) Account information — your username, email address and profile picture when you register. (2) Game data — your game history, wins, draws and leaderboard statistics. (3) Messages — private messages you send to other players within the app. (4) Usage data — how you interact with the app including games played and features used."],
+            ["🎯 How We Use Your Information", "We use your information to: provide and improve the app experience, display your stats on the leaderboard, enable private messaging between players, send password reset emails when requested, and allow admin to manage the platform."],
+            ["🔒 Data Security", "Your password is encrypted using SHA-256 hashing and is never stored in plain text. We use Firebase (by Google) for authentication and data storage, which provides industry-standard security. We never sell your personal data to third parties."],
+            ["👶 Children's Privacy", "FavsTicTac Lovers is intended for users aged 13 and above. We do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal data, please contact us."],
+            ["🍪 Cookies", "Our app uses Firebase which may use cookies and similar technologies to maintain your login session and improve app performance."],
+            ["📢 Third Party Services", "We use the following third party services: Firebase (Google) for authentication and database, Netlify for app hosting. Each service has their own privacy policy."],
+            ["✏️ Your Rights", "You have the right to: access your personal data, update or correct your information through the Profile screen, delete your account by contacting us, and opt out of any communications."],
+            ["📧 Contact Us", "If you have any questions about this Privacy Policy, please contact us through the Feedback section in the app or email: favouradepoju70@gmail.com"],
+          ].map(([title, text])=>(
+
+            <div key={title}>
+              <div style={{fontWeight:700,color:"var(--accent)",marginBottom:4,fontSize:".75rem"}}>{title}</div>
+              <div style={{color:"#d0cdc8",lineHeight:1.7}}>{text}</div>
+            </div>
+          ))}
+
+          <div style={{textAlign:"center",padding:"12px 0",borderTop:"1px solid var(--border)",color:"var(--muted)",fontSize:".65rem"}}>
+            © 2026 FavsTicTac Lovers · Adepoju Favour Emmanuel · All rights reserved.
+          </div>
+        </div>
+        <button className="btn btn-outline" style={{marginTop:14}} onClick={()=>setScreen("home")}>← Back to Home</button>
+      </div>
+    </div></div></>
+  );
+
+  // ── FEEDBACK ─────────────────────────────────────────────────────────────────
+  if(screen==="feedback") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="home"/>
+      <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">📝 Send Feedback</div></div>
+      <div className="card gap">
+        <div style={{textAlign:"center",fontSize:".78rem",color:"var(--muted)"}}>
+          Help us improve FavsTicTac Lovers! Your feedback goes directly to the developer. 🙏
+        </div>
+
+        {feedbackMsg&&<div className={`alert ${feedbackMsg.startsWith("success")?"alert-success":"alert-error"}`}>{feedbackMsg.split(":")[1]}</div>}
+
+        {/* Feedback type */}
+        <div className="field">
+          <div className="label">📌 Feedback Type</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {[["💡","general","General"],["🐛","bug","Bug Report"],["✨","feature","Feature Request"],["⭐","review","Review"]].map(([icon,type,label])=>(
+              <button key={type} onClick={()=>setFeedbackType(type)}
+                style={{padding:"10px 8px",borderRadius:9,border:`2px solid ${feedbackType===type?"var(--accent)":"var(--border)"}`,
+                  background:feedbackType===type?"rgba(255,215,0,.08)":"#16161f",cursor:"pointer",
+                  color:feedbackType===type?"var(--accent)":"var(--muted)",fontFamily:"'Space Mono',monospace",fontSize:".72rem",transition:"all .18s"}}>
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Star rating */}
+        <div className="field">
+          <div className="label">⭐ Rate the App</div>
+          <div style={{display:"flex",gap:8,justifyContent:"center",padding:"8px 0"}}>
+            {[1,2,3,4,5].map(star=>(
+              <button key={star} onClick={()=>setFeedbackRating(star)}
+                style={{fontSize:"1.8rem",background:"none",border:"none",cursor:"pointer",transition:"transform .15s",transform:feedbackRating>=star?"scale(1.1)":"scale(1)",filter:feedbackRating>=star?"none":"grayscale(1)"}}>
+                ⭐
+              </button>
+            ))}
+          </div>
+          <div style={{textAlign:"center",fontSize:".7rem",color:"var(--accent)",fontWeight:700}}>
+            {["","😞 Poor","😕 Fair","😊 Good","😃 Great","🤩 Excellent!"][feedbackRating]}
+          </div>
+        </div>
+
+        {/* Message */}
+        <div className="field">
+          <div className="label">💬 Your Message</div>
+          <textarea
+            style={{width:"100%",padding:"11px 14px",background:"#16161f",border:"1px solid var(--border)",borderRadius:9,color:"#f0ede8",fontFamily:"'Space Mono',monospace",fontSize:".78rem",outline:"none",resize:"none",minHeight:100,transition:"border .2s"}}
+            placeholder={feedbackType==="bug"?"Describe the bug and how to reproduce it…":feedbackType==="feature"?"What feature would you like to see?":"Share your thoughts about the app…"}
+            value={feedbackText} onChange={e=>setFeedbackText(e.target.value)}/>
+        </div>
+
+        <button className="btn btn-primary" onClick={submitFeedback} disabled={feedbackBusy||!feedbackText.trim()}>
+          {feedbackBusy?<><span className="spinner"/> Submitting…</>:"📤 Submit Feedback"}
+        </button>
+        <button className="btn btn-outline" onClick={()=>setScreen("home")}>← Back</button>
+
+        <div style={{textAlign:"center",fontSize:".65rem",color:"var(--muted)"}}>
+          Submitting as <span style={{color:"var(--accent)"}}>{authUser.username}</span>
+        </div>
+      </div>
+    </div></div></>
+  );
+
   if(screen==="admin") return <AdminDashboard authUser={authUser} db={db} onBack={()=>setScreen("profile")}/>;
 
   return null;
@@ -1459,6 +1591,8 @@ function AdminDashboard({authUser, db, onBack}) {
   const [adminMsgBusy, setAdminMsgBusy] = useState(false);
   const [dailyStats, setDailyStats] = useState([]);
   const [bannedUsers, setBannedUsers] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackFilter, setFeedbackFilter] = useState("all");
 
   useEffect(()=>{ if(authUser.uid===ADMIN_UID){ loadAll(); subscribeAnnouncements(); subscribeLiveGames(); loadTournaments(); } },[]);
 
@@ -1477,6 +1611,9 @@ function AdminDashboard({authUser, db, onBack}) {
       // Load banned users
       const bannedSnap = await getDocs(collection(db,"banned_users"));
       setBannedUsers(bannedSnap.docs.map(d=>d.id));
+      // Load feedback
+      const fbSnap = await getDocs(query(collection(db,"feedback"),orderBy("createdAt","desc"),limit(100)));
+      setFeedbacks(fbSnap.docs.map(d=>({id:d.id,...d.data()})));
       // Build daily stats from users createdAt
       buildDailyStats(usersData);
     } catch(e){ console.error(e); }
@@ -1768,7 +1905,7 @@ function AdminDashboard({authUser, db, onBack}) {
 
       {/* Tabs */}
       <div className="adm-tabs">
-        {[["📊","overview"],["👥","users"],["📢","announce"],["🏆","tournaments"],["🎮","live"],["📈","stats"],["⚙️","settings"]].map(([icon,t])=>(
+        {[["📊","overview"],["👥","users"],["📢","announce"],["🏆","tournaments"],["🎮","live"],["📝","feedback"],["📈","stats"],["⚙️","settings"]].map(([icon,t])=>(
           <button key={t} className={`adm-tab ${tab===t?"on":""}`} onClick={()=>setTab(t)}>{icon} {t}</button>
         ))}
       </div>
@@ -2027,6 +2164,55 @@ function AdminDashboard({authUser, db, onBack}) {
                       {v||"·"}
                     </div>
                   ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>)}
+
+        {/* ── FEEDBACK ── */}
+        {!loading&&tab==="feedback"&&(<>
+          <div className="adm-section">
+            <div className="adm-section-title">
+              <span>📝 User Feedback ({feedbacks.length})</span>
+              <div style={{display:"flex",gap:6}}>
+                {["all","general","bug","feature","review"].map(f=>(
+                  <button key={f} className={`adm-tab ${feedbackFilter===f?"on":""}`} style={{padding:"4px 8px",fontSize:".55rem"}} onClick={()=>setFeedbackFilter(f)}>{f}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="adm-grid" style={{marginBottom:14}}>
+              <div className="adm-stat">
+                <div className="adm-stat-val" style={{color:"#ffd700"}}>
+                  {feedbacks.length>0?(feedbacks.reduce((s,f)=>s+(f.rating||5),0)/feedbacks.length).toFixed(1):0}
+                </div>
+                <div className="adm-stat-lbl">⭐ Avg Rating</div>
+              </div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#2ed573"}}>{feedbacks.filter(f=>f.type==="bug").length}</div><div className="adm-stat-lbl">🐛 Bugs</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#a29bfe"}}>{feedbacks.filter(f=>f.type==="feature").length}</div><div className="adm-stat-lbl">✨ Features</div></div>
+              <div className="adm-stat"><div className="adm-stat-val" style={{color:"#fd79a8"}}>{feedbacks.filter(f=>f.rating===5).length}</div><div className="adm-stat-lbl">🤩 5 Stars</div></div>
+            </div>
+
+            {feedbacks.filter(f=>feedbackFilter==="all"||f.type===feedbackFilter).length===0&&(
+              <div style={{textAlign:"center",color:"#5a5a7a",padding:"24px 0",fontSize:".78rem"}}>No feedback yet.</div>
+            )}
+            {feedbacks.filter(f=>feedbackFilter==="all"||f.type===feedbackFilter).map(f=>(
+              <div key={f.id} className="adm-card">
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <span className={`adm-badge ${f.type==="bug"?"adm-badge-red":f.type==="feature"?"adm-badge-purple":f.type==="review"?"adm-badge-gold":"adm-badge-green"}`}>
+                      {f.type==="bug"?"🐛 Bug":f.type==="feature"?"✨ Feature":f.type==="review"?"⭐ Review":"💡 General"}
+                    </span>
+                    <span style={{fontSize:".7rem"}}>{"⭐".repeat(f.rating||5)}</span>
+                  </div>
+                  <div style={{fontSize:".6rem",color:"#5a5a7a"}}>{f.createdAt?.seconds?new Date(f.createdAt.seconds*1000).toLocaleDateString():""}</div>
+                </div>
+                <div style={{fontSize:".75rem",lineHeight:1.6,color:"#f0ede8",marginBottom:8}}>{f.text}</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{fontSize:".65rem",color:"#5a5a7a"}}>By <span style={{color:"#ffd700",fontWeight:700}}>{f.username}</span></div>
+                  <div style={{fontSize:".62rem",color:"#5a5a7a"}}>{f.email}</div>
                 </div>
               </div>
             ))}
