@@ -210,6 +210,27 @@ body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-hei
 .game-chat-msg.mine{background:rgba(255,215,0,.12);align-self:flex-end;text-align:right}
 .game-chat-msg.other{background:rgba(46,213,115,.08);align-self:flex-start}
 .game-chat-input{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);align-items:center}
+/* Timer */
+.timer-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin-bottom:10px}
+.timer-fill{height:100%;border-radius:3px;transition:width 1s linear,background .5s}
+.timer-display{text-align:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;margin-bottom:6px}
+/* Achievement popup */
+.ach-popup{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1000;
+  background:linear-gradient(135deg,#1a0828,#0a1a10);border:2px solid var(--accent);
+  border-radius:14px;padding:12px 20px;max-width:300px;width:90%;text-align:center;
+  animation:popIn .4s cubic-bezier(.36,.07,.19,.97);box-shadow:0 8px 32px rgba(255,215,0,.2)}
+.ach-icon{font-size:2.5rem;animation:bounce 0.5s ease infinite alternate}
+.ach-title{font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:var(--accent);margin-top:4px}
+.ach-desc{font-size:.7rem;color:var(--muted);margin-top:2px}
+/* Daily bonus */
+.bonus-overlay{position:fixed;inset:0;background:rgba(8,8,15,.95);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px}
+.bonus-box{background:var(--card);border:2px solid var(--accent);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center;animation:welcomeIn .5s cubic-bezier(.36,.07,.19,.97)}
+.bonus-coins{font-family:'Syne',sans-serif;font-weight:800;font-size:3rem;color:var(--accent);animation:bounce 1s ease infinite alternate}
+/* Streak badge */
+.streak-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,71,87,.15);border:1px solid rgba(255,71,87,.3);border-radius:20px;padding:4px 10px;font-size:.7rem;color:var(--x);font-weight:700}
+.streak-badge.hot{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.3);color:var(--accent)}
+/* Coins display */
+.coins-display{display:flex;align-items:center;gap:4px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);border-radius:20px;padding:4px 10px;font-size:.7rem;color:var(--accent);font-weight:700}
 /* Chat popup */
 .chat-popup{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:999;
   background:var(--card);border:2px solid var(--o);border-radius:14px;padding:12px 16px;
@@ -348,6 +369,20 @@ export default function App() {
   const [p1Symbol, setP1Symbol] = useState("X");
   const [firstPlayer, setFirstPlayer] = useState("p1");
   const [roundStarter, setRoundStarter] = useState("p1");
+  // Timer mode
+  const [timerMode, setTimerMode] = useState(false);
+  const [timePerMove, setTimePerMove] = useState(15);
+  const [timeLeft, setTimeLeft] = useState(15);
+  const timerRef = useRef(null);
+  // Streaks & achievements
+  const [streak, setStreak] = useState(0);
+  const [userStats, setUserStats] = useState({wins:0,draws:0,games:0,streak:0,bestStreak:0,achievements:[]});
+  const [newAchievement, setNewAchievement] = useState(null);
+  const [showAchievements, setShowAchievements] = useState(false);
+  // Daily login bonus
+  const [showLoginBonus, setShowLoginBonus] = useState(false);
+  const [loginBonusCoins, setLoginBonusCoins] = useState(0);
+  const [userCoins, setUserCoins] = useState(0);
   // Chat popup & voice notes
   const [chatPopup, setChatPopup] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -438,12 +473,15 @@ export default function App() {
     setScores(s=>({X:s.X+(winner==="X"?1:0),O:s.O+(winner==="O"?1:0),draw:s.draw+(res==="draw"?1:0)}));
     if (authUser) {
       const isX=pls.X===authUser.username; const won=isX?winner==="X":winner==="O";
+      const isDraw=res==="draw";
       const lbRef=doc(db,"leaderboard",authUser.uid);
       const lbSnap=await getDoc(lbRef);
-      if(lbSnap.exists()){await updateDoc(lbRef,{wins:(lbSnap.data().wins||0)+(won?1:0),draws:(lbSnap.data().draws||0)+(res==="draw"?1:0),games:(lbSnap.data().games||0)+1});}
-      else{await setDoc(lbRef,{username:authUser.username,photoURL:authUser.photoURL||null,wins:won?1:0,draws:res==="draw"?1:0,games:1});}
+      if(lbSnap.exists()){await updateDoc(lbRef,{wins:(lbSnap.data().wins||0)+(won?1:0),draws:(lbSnap.data().draws||0)+(isDraw?1:0),games:(lbSnap.data().games||0)+1});}
+      else{await setDoc(lbRef,{username:authUser.username,photoURL:authUser.photoURL||null,wins:won?1:0,draws:isDraw?1:0,games:1});}
       const histRef=doc(collection(db,`users/${authUser.uid}/history`));
       await setDoc(histRef,{players:pls,winner:winner||"Draw",moves:log.length,mode,createdAt:serverTimestamp()});
+      // Update streak & achievements
+      await updateUserStats(won, isDraw, mode==="ai", timerMode&&won);
     }
     loadLeaderboard(); if(authUser) loadMyHistory(authUser.uid);
   };
@@ -594,6 +632,160 @@ export default function App() {
       setFeedbackMsg("success:Thank you for your feedback! 🙏");
     } catch { setFeedbackMsg("error:Failed to submit. Try again."); }
     setFeedbackBusy(false);
+  };
+
+  // ── ACHIEVEMENTS DEFINITIONS ────────────────────────────────────────────────
+  const ACHIEVEMENTS = [
+    {id:"first_win", icon:"🏆", title:"First Victory!", desc:"Win your first game"},
+    {id:"win_5", icon:"⭐", title:"Rising Star", desc:"Win 5 games"},
+    {id:"win_10", icon:"🌟", title:"Star Player", desc:"Win 10 games"},
+    {id:"win_25", icon:"💫", title:"Champion", desc:"Win 25 games"},
+    {id:"win_50", icon:"👑", title:"Legend", desc:"Win 50 games"},
+    {id:"streak_3", icon:"🔥", title:"On Fire!", desc:"Win 3 in a row"},
+    {id:"streak_5", icon:"⚡", title:"Lightning!", desc:"Win 5 in a row"},
+    {id:"streak_10", icon:"🌪️", title:"Unstoppable!", desc:"Win 10 in a row"},
+    {id:"games_10", icon:"🎮", title:"Gamer", desc:"Play 10 games"},
+    {id:"games_50", icon:"🕹️", title:"Dedicated", desc:"Play 50 games"},
+    {id:"beat_ai", icon:"🤖", title:"AI Slayer", desc:"Beat the AI"},
+    {id:"draw_master", icon:"🤝", title:"Draw Master", desc:"Get 5 draws"},
+    {id:"timer_win", icon:"⏱️", title:"Speed Demon", desc:"Win in timer mode"},
+  ];
+
+  // ── LOAD USER STATS & CHECK DAILY BONUS ────────────────────────────────────
+  const loadUserStats = async (uid) => {
+    const {doc, getDoc} = window._fb;
+    try {
+      const snap = await getDoc(doc(db,"user_stats",uid));
+      if(snap.exists()){
+        const data = snap.data();
+        setUserStats(data);
+        setStreak(data.streak||0);
+        setUserCoins(data.coins||0);
+        // Check daily login bonus
+        const lastLogin = data.lastLogin||0;
+        const today = new Date().toDateString();
+        const lastLoginDate = new Date(lastLogin).toDateString();
+        if(lastLoginDate !== today){
+          const dayStreak = data.loginStreak||0;
+          const bonus = Math.min(10 + (dayStreak*5), 50);
+          setLoginBonusCoins(bonus);
+          setShowLoginBonus(true);
+          // Update last login and coins
+          const {updateDoc} = window._fb;
+          await updateDoc(doc(db,"user_stats",uid),{
+            lastLogin:Date.now(),
+            loginStreak:(dayStreak+1),
+            coins:(data.coins||0)+bonus,
+          });
+          setUserCoins(c=>c+bonus);
+        }
+      } else {
+        // First time — create stats doc
+        const {setDoc} = window._fb;
+        await setDoc(doc(db,"user_stats",uid),{
+          wins:0,draws:0,games:0,streak:0,bestStreak:0,
+          achievements:[],coins:50,lastLogin:Date.now(),loginStreak:1,
+        });
+        setUserCoins(50);
+        setLoginBonusCoins(50);
+        setShowLoginBonus(true);
+      }
+    } catch(e){ console.error(e); }
+  };
+
+  // Load stats when user logs in
+  useEffect(()=>{ if(authUser) loadUserStats(authUser.uid); },[authUser?.uid]);
+
+  // ── TIMER MODE ──────────────────────────────────────────────────────────────
+  useEffect(()=>{
+    if(!timerMode||result||screen!=="game") return;
+    clearInterval(timerRef.current);
+    setTimeLeft(timePerMove);
+    timerRef.current = setInterval(()=>{
+      setTimeLeft(t=>{
+        if(t<=1){
+          clearInterval(timerRef.current);
+          // Auto forfeit current player's turn
+          handleTimerExpiry();
+          return timePerMove;
+        }
+        return t-1;
+      });
+    },1000);
+    return ()=>clearInterval(timerRef.current);
+  },[turn, timerMode, result, screen]);
+
+  const handleTimerExpiry = useCallback(()=>{
+    // Switch turn without making a move — forfeit
+    setTurn(t=>t==="X"?"O":"X");
+  },[]);
+
+  // Reset timer on each move
+  const resetTimer = () => {
+    if(!timerMode) return;
+    clearInterval(timerRef.current);
+    setTimeLeft(timePerMove);
+  };
+
+  // ── CHECK & AWARD ACHIEVEMENTS ──────────────────────────────────────────────
+  const checkAchievements = async (newStats) => {
+    const {doc, updateDoc} = window._fb;
+    const earned = [...(newStats.achievements||[])];
+    const toCheck = [
+      {id:"first_win", cond:newStats.wins>=1},
+      {id:"win_5", cond:newStats.wins>=5},
+      {id:"win_10", cond:newStats.wins>=10},
+      {id:"win_25", cond:newStats.wins>=25},
+      {id:"win_50", cond:newStats.wins>=50},
+      {id:"streak_3", cond:newStats.streak>=3},
+      {id:"streak_5", cond:newStats.streak>=5},
+      {id:"streak_10", cond:newStats.streak>=10},
+      {id:"games_10", cond:newStats.games>=10},
+      {id:"games_50", cond:newStats.games>=50},
+      {id:"beat_ai", cond:newStats.beatAI},
+      {id:"draw_master", cond:newStats.draws>=5},
+      {id:"timer_win", cond:newStats.timerWins>=1},
+    ];
+    let newEarned = false;
+    for(const {id,cond} of toCheck){
+      if(cond && !earned.includes(id)){
+        earned.push(id);
+        newEarned = true;
+        const ach = ACHIEVEMENTS.find(a=>a.id===id);
+        if(ach) { setNewAchievement(ach); setTimeout(()=>setNewAchievement(null),4000); }
+        break; // Show one at a time
+      }
+    }
+    if(newEarned){
+      try { await updateDoc(doc(db,"user_stats",authUser.uid),{achievements:earned}); } catch {}
+      setUserStats(s=>({...s,achievements:earned}));
+    }
+  };
+
+  // ── UPDATE STATS AFTER GAME ─────────────────────────────────────────────────
+  const updateUserStats = async (won, drew, vsAI=false, timerWin=false) => {
+    if(!authUser) return;
+    const {doc, getDoc, updateDoc} = window._fb;
+    try {
+      const snap = await getDoc(doc(db,"user_stats",authUser.uid));
+      const cur = snap.exists()?snap.data():{wins:0,draws:0,games:0,streak:0,bestStreak:0,achievements:[],coins:0,beatAI:false,timerWins:0};
+      const newStreak = won ? (cur.streak||0)+1 : 0;
+      const coinEarned = won?10:drew?3:1;
+      const newStats = {
+        wins:(cur.wins||0)+(won?1:0),
+        draws:(cur.draws||0)+(drew?1:0),
+        games:(cur.games||0)+1,
+        streak:newStreak,
+        bestStreak:Math.max(cur.bestStreak||0, newStreak),
+        coins:(cur.coins||0)+coinEarned,
+        beatAI:cur.beatAI||(vsAI&&won),
+        timerWins:(cur.timerWins||0)+(timerWin?1:0),
+        achievements:cur.achievements||[],
+      };
+      await updateDoc(doc(db,"user_stats",authUser.uid), newStats);
+      setUserStats(newStats); setStreak(newStreak); setUserCoins(newStats.coins);
+      await checkAchievements(newStats);
+    } catch(e){ console.error(e); }
   };
 
   const handleLogout = async () => {
@@ -861,7 +1053,9 @@ export default function App() {
         <AvatarComp user={authUser}/>
         <div><div className="topbar-name">{authUser?.username}</div><div className="topbar-email">{authUser?.email}</div></div>
       </div>
-      <div style={{display:"flex",gap:6}}>
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        <div className="coins-display">🪙 {userCoins}</div>
+        {streak>=3&&<div className="streak-badge hot">🔥 {streak}</div>}
         {backTo&&<button className="btn btn-outline btn-sm" onClick={()=>setScreen(backTo)} style={{width:"auto"}}>{backLabel||"←"}</button>}
         <button className="btn btn-outline btn-sm" onClick={handleLogout} style={{width:"auto"}}>Out</button>
       </div>
@@ -896,7 +1090,34 @@ export default function App() {
     </div></>
   );
 
-  // ── WELCOME SCREEN ───────────────────────────────────────────────────────────
+  // ── DAILY LOGIN BONUS ─────────────────────────────────────────────────────────
+  if(showLoginBonus) return(
+    <><style>{CSS}</style>
+    <div className="bonus-overlay">
+      <div className="bonus-box">
+        <div style={{fontSize:"2rem",marginBottom:8}}>🎁</div>
+        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"var(--accent)",marginBottom:6}}>Daily Login Bonus!</div>
+        <div style={{color:"var(--muted)",fontSize:".75rem",marginBottom:16}}>Welcome back {authUser?.username}! Here's your reward for logging in today!</div>
+        <div className="bonus-coins">+{loginBonusCoins}</div>
+        <div style={{color:"var(--accent)",fontSize:".8rem",marginBottom:20}}>🪙 Coins Earned!</div>
+        <div style={{color:"var(--muted)",fontSize:".68rem",marginBottom:20}}>Total coins: 🪙 {userCoins}</div>
+        <div style={{display:"flex",gap:8,justifyContent:"center",fontSize:"1.2rem",marginBottom:20}}>
+          {"🪙🎮🏆🔥⭐".split("").map((e,i)=><span key={i} style={{animation:`bounce ${0.6+i*0.1}s ease infinite alternate`}}>{e}</span>)}
+        </div>
+        <button className="btn btn-primary" onClick={()=>setShowLoginBonus(false)}>🎮 Let's Play!</button>
+      </div>
+    </div></>
+  );
+
+  // ── ACHIEVEMENT POPUP (shown over any screen) ─────────────────────────────────
+  const AchievementPopup = () => newAchievement?(
+    <div className="ach-popup">
+      <div style={{fontSize:".65rem",color:"var(--accent)",textTransform:"uppercase",letterSpacing:2,marginBottom:4}}>🏅 Achievement Unlocked!</div>
+      <div className="ach-icon">{newAchievement.icon}</div>
+      <div className="ach-title">{newAchievement.title}</div>
+      <div className="ach-desc">{newAchievement.desc}</div>
+    </div>
+  ):null;
   if(showWelcome) return(
     <><style>{CSS}</style>
     <div className="welcome-overlay">
@@ -1015,6 +1236,35 @@ export default function App() {
           </div>
         </div>
 
+        {/* Timer Mode */}
+        <div className="field">
+          <div className="label">⏱️ Timer Mode</div>
+          <div style={{display:"flex",alignItems:"center",gap:10,background:"#16161f",borderRadius:9,padding:"10px 14px",border:`1px solid ${timerMode?"var(--accent)":"var(--border)"}`}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:".78rem",fontWeight:700,color:timerMode?"var(--accent)":"#f0ede8"}}>⏱️ Enable Timer</div>
+              <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:2}}>Each player has limited time per move</div>
+            </div>
+            <button onClick={()=>setTimerMode(p=>!p)} style={{width:44,height:24,borderRadius:12,border:"none",background:timerMode?"var(--accent)":"var(--border)",cursor:"pointer",position:"relative",transition:"all .2s"}}>
+              <div style={{width:18,height:18,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:timerMode?23:3,transition:"left .2s"}}/>
+            </button>
+          </div>
+          {timerMode&&(
+            <div style={{marginTop:8}}>
+              <div className="label" style={{marginBottom:6}}>Seconds per move</div>
+              <div style={{display:"flex",gap:8"}}>
+                {[10,15,20,30].map(t=>(
+                  <button key={t} onClick={()=>setTimePerMove(t)}
+                    style={{flex:1,padding:"8px 4px",borderRadius:8,border:`2px solid ${timePerMove===t?"var(--accent)":"var(--border)"}`,
+                      background:timePerMove===t?"rgba(255,215,0,.1)":"#16161f",color:timePerMove===t?"var(--accent)":"var(--muted)",
+                      cursor:"pointer",fontFamily:"'Space Mono',monospace",fontSize:".75rem",fontWeight:700}}>
+                    {t}s
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <button className="btn btn-primary" onClick={beginGame}>▶ Start Game</button>
         <button className="btn btn-outline" onClick={()=>setScreen("home")}>← Back</button>
       </div>
@@ -1096,6 +1346,24 @@ export default function App() {
             }
           </div>
         )}
+        {/* Achievement popup */}
+        <AchievementPopup/>
+
+        {/* Timer bar */}
+        {timerMode&&!result&&!waitingForOpponent&&(
+          <div style={{marginBottom:8}}>
+            <div className="timer-display" style={{color:timeLeft<=5?"var(--x)":timeLeft<=10?"var(--accent)":"var(--o)"}}>
+              ⏱️ {timeLeft}s
+            </div>
+            <div className="timer-bar">
+              <div className="timer-fill" style={{
+                width:`${(timeLeft/timePerMove)*100}%`,
+                background:timeLeft<=5?"var(--x)":timeLeft<=10?"var(--accent)":"var(--o)"
+              }}/>
+            </div>
+          </div>
+        )}
+
         <div className="scoreboard">
           <div className={`score-box ${!result&&turn==="X"?"active":""}`}><div className="score-name">{players.X}</div><div className="score-num score-x">{scores.X}</div><div className="score-name" style={{color:"var(--x)"}}>X</div></div>
           <div style={{textAlign:"center"}}><div style={{color:"var(--muted)",fontSize:".65rem"}}>VS</div><div style={{color:"var(--accent)",fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1rem"}}>{scores.draw}</div><div style={{color:"var(--muted)",fontSize:".6rem"}}>draws</div></div>
@@ -1442,6 +1710,7 @@ export default function App() {
           </div>
         </div>
 
+        <button className="btn btn-outline" onClick={()=>setScreen("achievements")}>🏅 My Achievements ({(userStats.achievements||[]).length}/{ACHIEVEMENTS.length})</button>
         <button className="btn btn-outline" onClick={()=>{loadMyHistory(authUser.uid);setScreen("history")}}>📜 View Game History</button>
         {authUser.uid==="FeJCFJjq36XSLXvxbs7UIt7I9Oo1"&&(
           <button className="btn btn-primary" onClick={()=>setScreen("admin")}>🎛️ Admin Dashboard</button>
@@ -1453,6 +1722,45 @@ export default function App() {
   );
 
   // ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
+  // ── ACHIEVEMENTS SCREEN ───────────────────────────────────────────────────────
+  if(screen==="achievements") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="profile"/>
+      <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🏅 Achievements</div></div>
+      <div className="card">
+        {/* Stats summary */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+          {[["🔥",streak,"Streak"],["🪙",userCoins,"Coins"],["🏅",(userStats.achievements||[]).length,"Earned"]].map(([icon,val,lbl])=>(
+            <div key={lbl} style={{background:"#16161f",borderRadius:8,padding:"10px 6px",textAlign:"center",border:"1px solid var(--border)"}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"var(--accent)"}}>{val}</div>
+              <div style={{fontSize:".6rem",color:"var(--muted)"}}>{icon} {lbl}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{maxHeight:500,overflowY:"auto",scrollbarWidth:"thin",display:"flex",flexDirection:"column",gap:8}}>
+          {ACHIEVEMENTS.map(a=>{
+            const earned = (userStats.achievements||[]).includes(a.id);
+            return(
+              <div key={a.id} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 12px",borderRadius:10,
+                background:earned?"rgba(255,215,0,.06)":"#16161f",border:`1px solid ${earned?"var(--accent)":"var(--border)"}`,
+                opacity:earned?1:0.5,transition:"all .2s"}}>
+                <div style={{fontSize:"1.8rem",filter:earned?"none":"grayscale(1)"}}>{a.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:".8rem",color:earned?"var(--accent)":"#f0ede8"}}>{a.title}</div>
+                  <div style={{fontSize:".65rem",color:"var(--muted)",marginTop:2}}>{a.desc}</div>
+                </div>
+                {earned&&<div style={{fontSize:".65rem",color:"var(--accent)",fontWeight:700}}>✅</div>}
+                {!earned&&<div style={{fontSize:".65rem",color:"var(--muted)"}}>🔒</div>}
+              </div>
+            );
+          })}
+        </div>
+        <button className="btn btn-outline" style={{marginTop:14}} onClick={()=>setScreen("profile")}>← Back</button>
+      </div>
+    </div></div></>
+  );
+
   // ── PRIVACY POLICY ───────────────────────────────────────────────────────────
   if(screen==="privacy") return(
     <><style>{CSS}</style>
@@ -1478,7 +1786,6 @@ export default function App() {
             ["✏️ Your Rights", "You have the right to: access your personal data, update or correct your information through the Profile screen, delete your account by contacting us, and opt out of any communications."],
             ["📧 Contact Us", "If you have any questions about this Privacy Policy, please contact us through the Feedback section in the app or email: favouradepoju70@gmail.com"],
           ].map(([title, text])=>(
-
             <div key={title}>
               <div style={{fontWeight:700,color:"var(--accent)",marginBottom:4,fontSize:".75rem"}}>{title}</div>
               <div style={{color:"#d0cdc8",lineHeight:1.7}}>{text}</div>
