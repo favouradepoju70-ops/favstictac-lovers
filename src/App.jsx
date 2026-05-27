@@ -1738,6 +1738,7 @@ export default function App() {
             </div>
           ))}
         </div>
+
         <div style={{maxHeight:500,overflowY:"auto",scrollbarWidth:"thin",display:"flex",flexDirection:"column",gap:8}}>
           {ACHIEVEMENTS.map(a=>{
             const earned = (userStats.achievements||[]).includes(a.id);
