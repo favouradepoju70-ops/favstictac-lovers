@@ -1277,6 +1277,17 @@ export default function App() {
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:20}}><Logo/><div className="tagline">Welcome back, {authUser.username}! 🎮</div></div>
+
+      {/* Quick Stats Banner */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+        {[["🪙",userCoins,"Coins"],["🔥",streak,"Streak"],["🏅",(userStats.achievements||[]).length,"Badges"]].map(([icon,val,lbl])=>(
+          <div key={lbl} style={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 6px",textAlign:"center"}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"var(--accent)"}}>{icon} {val}</div>
+            <div style={{fontSize:".6rem",color:"var(--muted)",marginTop:2}}>{lbl}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="card gap">
         <button className="btn btn-primary" onClick={()=>startLocalGame("local")}>🎮 Local 2-Player</button>
         <button className="btn btn-x" onClick={()=>startLocalGame("ai")}>🤖 vs AI (Unbeatable)</button>
