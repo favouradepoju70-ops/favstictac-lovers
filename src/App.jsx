@@ -1251,7 +1251,7 @@ export default function App() {
           {timerMode&&(
             <div style={{marginTop:8}}>
               <div className="label" style={{marginBottom:6}}>Seconds per move</div>
-              <div style={{display:"flex",gap:8"}}>
+              <div style={{display:"flex",gap:8}}>
                 {[10,15,20,30].map(t=>(
                   <button key={t} onClick={()=>setTimePerMove(t)}
                     style={{flex:1,padding:"8px 4px",borderRadius:8,border:`2px solid ${timePerMove===t?"var(--accent)":"var(--border)"}`,
