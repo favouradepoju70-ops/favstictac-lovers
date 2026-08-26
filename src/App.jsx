@@ -231,6 +231,15 @@ body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-hei
 .streak-badge.hot{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.3);color:var(--accent)}
 /* Coins display */
 .coins-display{display:flex;align-items:center;gap:4px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);border-radius:20px;padding:4px 10px;font-size:.7rem;color:var(--accent);font-weight:700}
+/* Coin wallet */
+.coin-tabs{display:flex;gap:6px;margin-bottom:16px}
+.coin-tab{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--border);background:#16161f;
+  font-family:'Space Mono',monospace;font-size:.68rem;cursor:pointer;transition:all .18s;text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.coin-tab.active{border-color:var(--accent);background:rgba(255,215,0,.08);color:var(--accent);font-weight:700}
+.coin-hist-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;
+  border-radius:9px;background:#16161f;border:1px solid var(--border);margin-bottom:7px}
+.coin-hist-amount{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem}
+.coin-hist-deposit{color:#2ed573}.coin-hist-withdraw{color:#ff4757}.coin-hist-win{color:var(--accent)}
 /* Chat popup */
 .chat-popup{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:999;
   background:var(--card);border:2px solid var(--o);border-radius:14px;padding:12px 16px;
@@ -618,6 +627,76 @@ export default function App() {
     setForgotBusy(false);
   };
 
+  // ── COIN SYSTEM ─────────────────────────────────────────────────────────────
+  const [coinScreen, setCoinScreen] = useState("wallet"); // wallet | deposit | withdraw | history
+  const [coinAmount, setCoinAmount] = useState("");
+  const [coinBusy, setCoinBusy] = useState(false);
+  const [coinMsg, setCoinMsg] = useState("");
+  const [coinHistory, setCoinHistory] = useState([]);
+  const [coinHistoryLoading, setCoinHistoryLoading] = useState(false);
+
+  const loadCoinHistory = async () => {
+    setCoinHistoryLoading(true);
+    const {collection, query, orderBy, limit, getDocs} = window._fb;
+    try {
+      const snap = await getDocs(query(collection(db,`users/${authUser.uid}/coin_history`), orderBy("createdAt","desc"), limit(30)));
+      setCoinHistory(snap.docs.map(d=>({id:d.id,...d.data()})));
+    } catch { setCoinHistory([]); }
+    setCoinHistoryLoading(false);
+  };
+
+  const depositCoins = async () => {
+    const amount = parseInt(coinAmount);
+    if(!amount||amount<=0){setCoinMsg("error:Enter a valid amount.");return;}
+    if(amount<10){setCoinMsg("error:Minimum deposit is 10 coins.");return;}
+    if(amount>10000){setCoinMsg("error:Maximum deposit is 10,000 coins.");return;}
+    setCoinBusy(true); setCoinMsg("");
+    try {
+      const {doc, updateDoc, addDoc, collection, serverTimestamp, getDoc} = window._fb;
+      const snap = await getDoc(doc(db,"user_stats",authUser.uid));
+      const cur = snap.exists()?snap.data():{coins:0};
+      const newCoins = (cur.coins||0) + amount;
+      await updateDoc(doc(db,"user_stats",authUser.uid),{coins:newCoins});
+      await addDoc(collection(db,`users/${authUser.uid}/coin_history`),{
+        type:"deposit", amount, balance:newCoins,
+        description:`Deposited ${amount} coins`,
+        createdAt:serverTimestamp(),
+      });
+      setUserCoins(newCoins);
+      setCoinAmount("");
+      setCoinMsg("success:"+amount+" coins deposited successfully! 🪙");
+      loadCoinHistory();
+    } catch { setCoinMsg("error:Deposit failed. Try again."); }
+    setCoinBusy(false);
+    setTimeout(()=>setCoinMsg(""),4000);
+  };
+
+  const withdrawCoins = async () => {
+    const amount = parseInt(coinAmount);
+    if(!amount||amount<=0){setCoinMsg("error:Enter a valid amount.");return;}
+    if(amount<10){setCoinMsg("error:Minimum withdrawal is 10 coins.");return;}
+    if(amount>userCoins){setCoinMsg("error:Insufficient coins. You only have 🪙 "+userCoins);return;}
+    setCoinBusy(true); setCoinMsg("");
+    try {
+      const {doc, updateDoc, addDoc, collection, serverTimestamp, getDoc} = window._fb;
+      const snap = await getDoc(doc(db,"user_stats",authUser.uid));
+      const cur = snap.exists()?snap.data():{coins:0};
+      const newCoins = (cur.coins||0) - amount;
+      await updateDoc(doc(db,"user_stats",authUser.uid),{coins:newCoins});
+      await addDoc(collection(db,`users/${authUser.uid}/coin_history`),{
+        type:"withdraw", amount, balance:newCoins,
+        description:`Withdrew ${amount} coins`,
+        createdAt:serverTimestamp(),
+      });
+      setUserCoins(newCoins);
+      setCoinAmount("");
+      setCoinMsg("success:"+amount+" coins withdrawn successfully! ✅");
+      loadCoinHistory();
+    } catch { setCoinMsg("error:Withdrawal failed. Try again."); }
+    setCoinBusy(false);
+    setTimeout(()=>setCoinMsg(""),4000);
+  };
+
   const submitFeedback = async () => {
     if(!feedbackText.trim()){setFeedbackMsg("error:Please write your feedback.");return;}
     setFeedbackBusy(true); setFeedbackMsg("");
@@ -770,7 +849,7 @@ export default function App() {
       const snap = await getDoc(doc(db,"user_stats",authUser.uid));
       const cur = snap.exists()?snap.data():{wins:0,draws:0,games:0,streak:0,bestStreak:0,achievements:[],coins:0,beatAI:false,timerWins:0};
       const newStreak = won ? (cur.streak||0)+1 : 0;
-      const coinEarned = won?10:drew?3:1;
+      const coinEarned = won ? 10 : 0; // Only winners earn coins
       const newStats = {
         wins:(cur.wins||0)+(won?1:0),
         draws:(cur.draws||0)+(drew?1:0),
@@ -784,6 +863,15 @@ export default function App() {
       };
       await updateDoc(doc(db,"user_stats",authUser.uid), newStats);
       setUserStats(newStats); setStreak(newStreak); setUserCoins(newStats.coins);
+      // Save to coin history if won
+      if(won&&coinEarned>0){
+        const {addDoc, collection, serverTimestamp} = window._fb;
+        await addDoc(collection(db,`users/${authUser.uid}/coin_history`),{
+          type:"win", amount:coinEarned, balance:newStats.coins,
+          description:`Won a game (+${coinEarned} coins)`,
+          createdAt:serverTimestamp(),
+        });
+      }
       await checkAchievements(newStats);
     } catch(e){ console.error(e); }
   };
@@ -1721,6 +1809,7 @@ export default function App() {
           </div>
         </div>
 
+        <button className="btn btn-primary" onClick={()=>{loadCoinHistory();setScreen("coins")}}>🪙 Coin Wallet ({userCoins} coins)</button>
         <button className="btn btn-outline" onClick={()=>setScreen("achievements")}>🏅 My Achievements ({(userStats.achievements||[]).length}/{ACHIEVEMENTS.length})</button>
         <button className="btn btn-outline" onClick={()=>{loadMyHistory(authUser.uid);setScreen("history")}}>📜 View Game History</button>
         {authUser.uid==="FeJCFJjq36XSLXvxbs7UIt7I9Oo1"&&(
@@ -1733,6 +1822,134 @@ export default function App() {
   );
 
   // ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
+  // ── COIN WALLET ───────────────────────────────────────────────────────────────
+  if(screen==="coins") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="profile"/>
+      <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🪙 Coin Wallet</div></div>
+      <div className="card gap">
+
+        {/* Balance card */}
+        <div style={{background:"linear-gradient(135deg,#1a0828,#0a1a10)",borderRadius:14,padding:"20px",textAlign:"center",border:"2px solid var(--accent)"}}>
+          <div style={{fontSize:".72rem",color:"var(--muted)",textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Total Balance</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:"2.8rem",color:"var(--accent)",lineHeight:1}}>🪙 {userCoins}</div>
+          <div style={{fontSize:".7rem",color:"var(--muted)",marginTop:8}}>Earn 10 coins per win · Daily login bonus</div>
+        </div>
+
+        {/* Tabs */}
+        <div className="coin-tabs">
+          {[["💰","deposit","Deposit"],["💸","withdraw","Withdraw"],["📜","history","History"]].map(([icon,t,label])=>(
+            <button key={t} className={`coin-tab ${coinScreen===t?"active":""}`}
+              onClick={()=>{setCoinScreen(t);setCoinMsg("");if(t==="history")loadCoinHistory();}}>
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+
+        {coinMsg&&<div className={`alert ${coinMsg.startsWith("success")?"alert-success":"alert-error"}`}>{coinMsg.split(":")[1]}</div>}
+
+        {/* Deposit */}
+        {coinScreen==="deposit"&&(
+          <div className="gap">
+            <div style={{fontSize:".75rem",color:"var(--muted)",lineHeight:1.6}}>
+              Add coins to your wallet. Minimum deposit is <span style={{color:"var(--accent)",fontWeight:700}}>10 coins</span>.
+            </div>
+            {/* Quick amounts */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+              {[50,100,250,500].map(a=>(
+                <button key={a} onClick={()=>setCoinAmount(String(a))}
+                  style={{padding:"10px 4px",borderRadius:9,border:`2px solid ${coinAmount===String(a)?"var(--accent)":"var(--border)"}`,
+                    background:coinAmount===String(a)?"rgba(255,215,0,.1)":"#16161f",
+                    color:coinAmount===String(a)?"var(--accent)":"var(--muted)",
+                    cursor:"pointer",fontFamily:"'Space Mono',monospace",fontSize:".72rem",fontWeight:700}}>
+                  {a}
+                </button>
+              ))}
+            </div>
+            <div className="field">
+              <div className="label">Custom Amount</div>
+              <input className="input" type="number" placeholder="Enter amount…" value={coinAmount}
+                onChange={e=>setCoinAmount(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&depositCoins()}/>
+            </div>
+            <button className="btn btn-primary" onClick={depositCoins} disabled={coinBusy||!coinAmount}>
+              {coinBusy?<><span className="spinner"/> Processing…</>:"💰 Deposit Coins"}
+            </button>
+            <div style={{fontSize:".65rem",color:"var(--muted)",textAlign:"center"}}>
+              ⚠️ This is a virtual coin system for the game only.
+            </div>
+          </div>
+        )}
+
+        {/* Withdraw */}
+        {coinScreen==="withdraw"&&(
+          <div className="gap">
+            <div style={{fontSize:".75rem",color:"var(--muted)",lineHeight:1.6}}>
+              Withdraw coins from your wallet. You have <span style={{color:"var(--accent)",fontWeight:700}}>🪙 {userCoins} coins</span> available.
+            </div>
+            {/* Quick amounts */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+              {[10,25,50,100].map(a=>(
+                <button key={a} onClick={()=>setCoinAmount(String(a))}
+                  style={{padding:"10px 4px",borderRadius:9,border:`2px solid ${coinAmount===String(a)?"var(--x)":"var(--border)"}`,
+                    background:coinAmount===String(a)?"rgba(255,71,87,.1)":"#16161f",
+                    color:coinAmount===String(a)?"var(--x)":"var(--muted)",
+                    cursor:"pointer",fontFamily:"'Space Mono',monospace",fontSize:".72rem",fontWeight:700,
+                    opacity:a>userCoins?0.4:1}}>
+                  {a}
+                </button>
+              ))}
+            </div>
+            <div className="field">
+              <div className="label">Custom Amount</div>
+              <input className="input" type="number" placeholder="Enter amount…" value={coinAmount}
+                onChange={e=>setCoinAmount(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&withdrawCoins()}/>
+            </div>
+            <button className="btn btn-x" onClick={withdrawCoins} disabled={coinBusy||!coinAmount||parseInt(coinAmount)>userCoins}>
+              {coinBusy?<><span className="spinner"/> Processing…</>:"💸 Withdraw Coins"}
+            </button>
+            <div style={{fontSize:".65rem",color:"var(--muted)",textAlign:"center"}}>
+              ⚠️ This is a virtual coin system for the game only.
+            </div>
+          </div>
+        )}
+
+        {/* History */}
+        {coinScreen==="history"&&(
+          <div>
+            <div style={{fontSize:".72rem",color:"var(--muted)",marginBottom:10}}>
+              Your last 30 coin transactions
+            </div>
+            {coinHistoryLoading&&<div style={{textAlign:"center",padding:"20px 0"}}><span className="spinner"/></div>}
+            {!coinHistoryLoading&&coinHistory.length===0&&(
+              <div style={{textAlign:"center",color:"var(--muted)",padding:"24px 0",fontSize:".78rem"}}>
+                No transactions yet.<br/>Play games or deposit coins!
+              </div>
+            )}
+            {coinHistory.map(h=>(
+              <div key={h.id} className="coin-hist-item">
+                <div>
+                  <div style={{fontSize:".78rem",fontWeight:700}}>{h.description}</div>
+                  <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:2}}>
+                    Balance after: 🪙 {h.balance}
+                    {h.createdAt?.seconds&&" · "+new Date(h.createdAt.seconds*1000).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className={`coin-hist-amount ${h.type==="deposit"?"coin-hist-deposit":h.type==="withdraw"?"coin-hist-withdraw":"coin-hist-win"}`}>
+                  {h.type==="withdraw"?"-":"+"}🪙{h.amount}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button className="btn btn-outline" onClick={()=>setScreen("profile")}>← Back to Profile</button>
+      </div>
+    </div></div></>
+  );
+
   // ── ACHIEVEMENTS SCREEN ───────────────────────────────────────────────────────
   if(screen==="achievements") return(
     <><style>{CSS}</style>
