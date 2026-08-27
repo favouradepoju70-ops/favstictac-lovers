@@ -358,6 +358,17 @@ export default function App() {
   const [viewingProfile, setViewingProfile] = useState(null);
   const [totalUnread, setTotalUnread] = useState(0);
   const privEndRef = useRef(null);
+  // Friend system
+  const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
+  const [friendSearch, setFriendSearch] = useState("");
+  const [friendSearchResults, setFriendSearchResults] = useState([]);
+  const [friendSearchBusy, setFriendSearchBusy] = useState(false);
+  const [friendMsg, setFriendMsg] = useState("");
+  const [totalFriendRequests, setTotalFriendRequests] = useState(0);
+  const [onlineFriends, setOnlineFriends] = useState([]);
+  const unsubFriendsRef = useRef(null);
 
   // Game chat
   const [gameChatMsgs, setGameChatMsgs] = useState([]);
@@ -695,6 +706,164 @@ export default function App() {
     } catch { setCoinMsg("error:Withdrawal failed. Try again."); }
     setCoinBusy(false);
     setTimeout(()=>setCoinMsg(""),4000);
+  };
+
+  // ── FRIEND SYSTEM ────────────────────────────────────────────────────────────
+  const loadFriends = async () => {
+    const {collection, getDocs, query, where, doc, getDoc} = window._fb;
+    try {
+      // Load friends
+      const friendsSnap = await getDocs(collection(db,`users/${authUser.uid}/friends`));
+      const friendsData = friendsSnap.docs.map(d=>({uid:d.id,...d.data()}));
+      setFriends(friendsData);
+      // Load friend requests received
+      const reqSnap = await getDocs(query(collection(db,"friend_requests"), where("toUid","==",authUser.uid), where("status","==","pending")));
+      const reqData = reqSnap.docs.map(d=>({id:d.id,...d.data()}));
+      setFriendRequests(reqData);
+      setTotalFriendRequests(reqData.length);
+      // Load sent requests
+      const sentSnap = await getDocs(query(collection(db,"friend_requests"), where("fromUid","==",authUser.uid), where("status","==","pending")));
+      setSentRequests(sentSnap.docs.map(d=>({id:d.id,...d.data()})));
+    } catch(e){ console.error(e); }
+  };
+
+  // Subscribe to friend requests for notification badge
+  useEffect(()=>{
+    if(!authUser||!fbReady) return;
+    const {collection, query, where, onSnapshot} = window._fb;
+    const q = query(collection(db,"friend_requests"), where("toUid","==",authUser.uid), where("status","==","pending"));
+    const unsub = onSnapshot(q, snap=>{
+      setTotalFriendRequests(snap.docs.length);
+      setFriendRequests(snap.docs.map(d=>({id:d.id,...d.data()})));
+    });
+    return ()=>unsub();
+  },[authUser?.uid, fbReady]);
+
+  // Update online status
+  useEffect(()=>{
+    if(!authUser||!fbReady) return;
+    const {doc, updateDoc, setDoc} = window._fb;
+    const updateOnline = async () => {
+      try {
+        await setDoc(doc(db,"online_users",authUser.uid),{
+          uid:authUser.uid, username:authUser.username,
+          photoURL:authUser.photoURL||null, lastSeen:Date.now(), online:true,
+        });
+      } catch {}
+    };
+    updateOnline();
+    const interval = setInterval(updateOnline, 30000);
+    return ()=>{ clearInterval(interval);
+      try { window._fb.updateDoc(window._fb.doc(db,"online_users",authUser.uid),{online:false,lastSeen:Date.now()}); } catch {}
+    };
+  },[authUser?.uid, fbReady]);
+
+  const searchFriends = async () => {
+    if(!friendSearch.trim()){setFriendMsg("error:Enter a username to search.");return;}
+    setFriendSearchBusy(true); setFriendSearchResults([]);
+    const {collection, getDocs} = window._fb;
+    try {
+      const snap = await getDocs(collection(db,"users"));
+      const results = snap.docs
+        .map(d=>({uid:d.id,...d.data()}))
+        .filter(u=>u.uid!==authUser.uid && u.username?.toLowerCase().includes(friendSearch.toLowerCase()));
+      setFriendSearchResults(results);
+      if(results.length===0) setFriendMsg("error:No players found for '"+friendSearch+"'");
+    } catch { setFriendMsg("error:Search failed. Try again."); }
+    setFriendSearchBusy(false);
+  };
+
+  const sendFriendRequest = async (toUser) => {
+    setFriendMsg("");
+    // Check if already friends
+    const alreadyFriend = friends.find(f=>f.uid===toUser.uid);
+    if(alreadyFriend){setFriendMsg("error:You are already friends with "+toUser.username+"!");return;}
+    // Check if already sent
+    const alreadySent = sentRequests.find(r=>r.toUid===toUser.uid);
+    if(alreadySent){setFriendMsg("error:Friend request already sent to "+toUser.username+"!");return;}
+    try {
+      const {collection, addDoc, serverTimestamp} = window._fb;
+      await addDoc(collection(db,"friend_requests"),{
+        fromUid:authUser.uid, fromUsername:authUser.username, fromPhoto:authUser.photoURL||null,
+        toUid:toUser.uid, toUsername:toUser.username,
+        status:"pending", createdAt:serverTimestamp(),
+      });
+      setSentRequests(s=>[...s,{toUid:toUser.uid}]);
+      setFriendMsg("success:Friend request sent to "+toUser.username+"! 🎉");
+    } catch { setFriendMsg("error:Failed to send request. Try again."); }
+    setTimeout(()=>setFriendMsg(""),3000);
+  };
+
+  const acceptFriendRequest = async (req) => {
+    try {
+      const {doc, updateDoc, setDoc} = window._fb;
+      // Update request status
+      await updateDoc(doc(db,"friend_requests",req.id),{status:"accepted"});
+      // Add to both users' friend lists
+      await setDoc(doc(db,`users/${authUser.uid}/friends`,req.fromUid),{
+        uid:req.fromUid, username:req.fromUsername, photoURL:req.fromPhoto||null, addedAt:Date.now(),
+      });
+      await setDoc(doc(db,`users/${req.fromUid}/friends`,authUser.uid),{
+        uid:authUser.uid, username:authUser.username, photoURL:authUser.photoURL||null, addedAt:Date.now(),
+      });
+      setFriends(f=>[...f,{uid:req.fromUid, username:req.fromUsername, photoURL:req.fromPhoto||null}]);
+      setFriendRequests(r=>r.filter(r=>r.id!==req.id));
+      setFriendMsg("success:You and "+req.fromUsername+" are now friends! 🎉");
+    } catch { setFriendMsg("error:Failed to accept. Try again."); }
+    setTimeout(()=>setFriendMsg(""),3000);
+  };
+
+  const declineFriendRequest = async (req) => {
+    try {
+      const {doc, updateDoc} = window._fb;
+      await updateDoc(doc(db,"friend_requests",req.id),{status:"declined"});
+      setFriendRequests(r=>r.filter(r=>r.id!==req.id));
+    } catch {}
+  };
+
+  const removeFriend = async (friendUid, friendUsername) => {
+    try {
+      const {doc, deleteDoc} = window._fb;
+      await deleteDoc(doc(db,`users/${authUser.uid}/friends`,friendUid));
+      await deleteDoc(doc(db,`users/${friendUid}/friends`,authUser.uid));
+      setFriends(f=>f.filter(f=>f.uid!==friendUid));
+      setFriendMsg("success:"+friendUsername+" removed from friends.");
+    } catch { setFriendMsg("error:Failed to remove friend."); }
+    setTimeout(()=>setFriendMsg(""),3000);
+  };
+
+  const challengeFriend = async (friend) => {
+    // Create online room and send them a message with the room code
+    const {doc, setDoc, addDoc, collection, serverTimestamp, getDoc, updateDoc} = window._fb;
+    const room = Math.random().toString(36).slice(2,8).toUpperCase();
+    await setDoc(doc(db,"rooms",room),{
+      board:Array(9).fill(null), turn:"X", moveLog:[], result:null, winLine:null,
+      hostUid:authUser.uid, hostName:authUser.username,
+      guestUid:null, guestName:null, createdAt:serverTimestamp(),
+    });
+    // Send message to friend with room code
+    const convoId = getConvoId(authUser.uid, friend.uid);
+    const convoRef = doc(db,"conversations",convoId);
+    const convoSnap = await getDoc(convoRef);
+    const now = serverTimestamp();
+    const challengeMsg = `⚡ GAME CHALLENGE! I challenge you to a Tic Tac Toe match! Join my room with code: ${room} 🎮`;
+    if(!convoSnap.exists()){
+      await setDoc(convoRef,{
+        members:[authUser.uid,friend.uid],
+        memberNames:{[authUser.uid]:authUser.username,[friend.uid]:friend.username},
+        memberPhotos:{[authUser.uid]:authUser.photoURL||null,[friend.uid]:friend.photoURL||null},
+        lastMsg:challengeMsg, lastAt:now,
+        [`unread_${friend.uid}`]:1, [`unread_${authUser.uid}`]:0,
+      });
+    } else {
+      await updateDoc(convoRef,{lastMsg:challengeMsg,lastAt:now,[`unread_${friend.uid}`]:(convoSnap.data()[`unread_${friend.uid}`]||0)+1});
+    }
+    await addDoc(collection(db,`conversations/${convoId}/messages`),{
+      text:challengeMsg, senderUid:authUser.uid, senderName:authUser.username,
+      senderPhoto:authUser.photoURL||null, createdAt:now,
+    });
+    setFriendMsg("success:Challenge sent to "+friend.username+"! Room: "+room+" 🎮");
+    setTimeout(()=>setFriendMsg(""),5000);
   };
 
   const submitFeedback = async () => {
@@ -1152,16 +1321,17 @@ export default function App() {
 
   const BottomNav = () => (
     <div className="bottom-nav">
-      {[["🏠","home","Home"],["🎮","play","Play"],["💬","messages","DMs"],["🏆","leaderboard","Ranks"],["👤","profile","Me"]].map(([icon,s,label])=>(
+      {[["🏠","home","Home"],["🎮","play","Play"],["👥","friends","Friends"],["💬","messages","DMs"],["👤","profile","Me"]].map(([icon,s,label])=>(
         <button key={s} className={`nav-item ${(screen===s||(s==="play"&&screen==="home"))?"active":""}`}
           onClick={()=>{
             if(s==="play") setScreen("home");
-            else if(s==="leaderboard"){loadLeaderboard();setScreen("leaderboard");}
+            else if(s==="friends"){loadFriends();setScreen("friends");}
             else if(s==="messages"){setScreen("messages");subscribeConversations();}
             else setScreen(s);
           }}>
           <span style={{fontSize:"1.1rem"}}>{icon}</span>
           {s==="messages"&&totalUnread>0&&<span className="nav-badge">{totalUnread>9?"9+":totalUnread}</span>}
+          {s==="friends"&&totalFriendRequests>0&&<span className="nav-badge">{totalFriendRequests>9?"9+":totalFriendRequests}</span>}
           <span style={{fontSize:".52rem",textTransform:"uppercase",letterSpacing:"1px"}}>{label}</span>
         </button>
       ))}
@@ -1388,9 +1558,12 @@ export default function App() {
           </button>
         </div>
         <div className="row">
+          <button className="btn btn-outline" style={{flex:1,position:"relative"}} onClick={()=>{loadFriends();setScreen("friends")}}>
+            👥 Friends ({friends.length}) {totalFriendRequests>0&&<span style={{background:"var(--error)",color:"#fff",borderRadius:50,padding:"1px 5px",fontSize:".6rem",marginLeft:4}}>{totalFriendRequests}</span>}
+          </button>
           <button className="btn btn-outline" style={{flex:1}} onClick={()=>setScreen("feedback")}>📝 Feedback</button>
-          <button className="btn btn-outline" style={{flex:1}} onClick={()=>setScreen("privacy")}>🔒 Privacy Policy</button>
         </div>
+        <button className="btn btn-outline" onClick={()=>setScreen("privacy")}>🔒 Privacy Policy</button>
       </div>
       <BottomNav/>
     </div></div></>
@@ -1528,7 +1701,117 @@ export default function App() {
     </div></div></>
   );
 
-  // ── MESSAGES (Inbox + Search) ─────────────────────────────────────────────────
+  // ── FRIENDS SCREEN ────────────────────────────────────────────────────────────
+  if(screen==="friends") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="home"/>
+      <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">👥 Friends</div></div>
+      <div className="card">
+
+        {friendMsg&&<div className={`alert ${friendMsg.startsWith("success")?"alert-success":"alert-error"}`} style={{marginBottom:10}}>{friendMsg.split(":")[1]}</div>}
+
+        {/* Tabs */}
+        <div className="tabs" style={{marginBottom:14}}>
+          <button className={`tab ${friendSearch===""&&friendRequests.length===0?"active":""}`} onClick={()=>{setFriendSearch("");setFriendSearchResults([]);}}>
+            👥 Friends ({friends.length})
+          </button>
+          <button className={`tab ${friendRequests.length>0?"active":""}`} onClick={()=>{}}>
+            🔔 Requests {friendRequests.length>0&&<span style={{background:"var(--error)",color:"#fff",borderRadius:50,padding:"1px 5px",fontSize:".55rem",marginLeft:4}}>{friendRequests.length}</span>}
+          </button>
+          <button className="tab" onClick={()=>{setFriendSearch(" ");setFriendSearchResults([])}}>🔍 Find</button>
+        </div>
+
+        {/* Friend Requests */}
+        {friendRequests.length>0&&(
+          <div style={{marginBottom:14}}>
+            <div className="label" style={{marginBottom:8}}>🔔 Friend Requests ({friendRequests.length})</div>
+            {friendRequests.map(req=>(
+              <div key={req.id} style={{display:"flex",gap:10,alignItems:"center",padding:"10px",borderRadius:10,background:"rgba(255,215,0,.06)",border:"1px solid rgba(255,215,0,.2)",marginBottom:8}}>
+                <AvatarComp user={{username:req.fromUsername,photoURL:req.fromPhoto}} size="md"/>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:".82rem"}}>{req.fromUsername}</div>
+                  <div style={{fontSize:".65rem",color:"var(--muted)"}}>wants to be your friend</div>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn btn-o btn-sm" onClick={()=>acceptFriendRequest(req)}>✅</button>
+                  <button className="btn btn-outline btn-sm" onClick={()=>declineFriendRequest(req)}>❌</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Search Friends */}
+        <div style={{marginBottom:14}}>
+          <div className="label" style={{marginBottom:8}}>🔍 Find Players</div>
+          <div className="row" style={{marginBottom:10}}>
+            <input className="input" style={{flex:1}} placeholder="Search by username…"
+              value={friendSearch} onChange={e=>setFriendSearch(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&searchFriends()}/>
+            <button className="btn btn-primary btn-sm" onClick={searchFriends} disabled={friendSearchBusy}>
+              {friendSearchBusy?<span className="spinner"/>:"🔍"}
+            </button>
+          </div>
+          {friendSearchResults.map(u=>{
+            const isFriend = friends.find(f=>f.uid===u.uid);
+            const isPending = sentRequests.find(r=>r.toUid===u.uid);
+            return(
+              <div key={u.uid} style={{display:"flex",gap:10,alignItems:"center",padding:"10px",borderRadius:10,background:"#16161f",border:"1px solid var(--border)",marginBottom:8}}>
+                <AvatarComp user={u} size="md"/>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:".82rem"}}>{u.username}</div>
+                  <div style={{fontSize:".65rem",color:"var(--muted)"}}>
+                    {isFriend?"✅ Already friends":isPending?"⏳ Request sent":"Tap to add"}
+                  </div>
+                </div>
+                {!isFriend&&!isPending&&(
+                  <button className="btn btn-primary btn-sm" onClick={()=>sendFriendRequest(u)}>➕ Add</button>
+                )}
+                {isFriend&&(
+                  <button className="btn btn-o btn-sm" onClick={()=>{setActiveConvo(u);setScreen("private-chat");}}>💬</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Friends List */}
+        <div className="label" style={{marginBottom:8}}>👥 My Friends ({friends.length})</div>
+        {friends.length===0&&(
+          <div style={{textAlign:"center",color:"var(--muted)",padding:"24px 0",fontSize:".78rem"}}>
+            No friends yet.<br/>Search for players to add them! 🔍
+          </div>
+        )}
+        {friends.map(f=>{
+          const isOnline = onlineFriends.find(o=>o.uid===f.uid);
+          return(
+            <div key={f.uid} style={{display:"flex",gap:10,alignItems:"center",padding:"10px",borderRadius:10,
+              background:"#16161f",border:`1px solid ${isOnline?"rgba(46,213,115,.3)":"var(--border)"}`,marginBottom:8}}>
+              <div style={{position:"relative"}}>
+                <AvatarComp user={f} size="md"/>
+                {isOnline&&<div style={{position:"absolute",bottom:0,right:0,width:10,height:10,borderRadius:"50%",background:"var(--o)",border:"2px solid var(--card)"}}/>}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:".82rem"}}>{f.username}</div>
+                <div style={{fontSize:".65rem",color:isOnline?"var(--o)":"var(--muted)"}}>
+                  {isOnline?"🟢 Online":"⚫ Offline"}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6}}>
+                <button className="btn btn-o btn-sm" onClick={()=>{setActiveConvo(f);setScreen("private-chat");}}>💬</button>
+                <button className="btn btn-primary btn-sm" onClick={()=>challengeFriend(f)}>⚡</button>
+                <button className="btn btn-outline btn-sm" onClick={()=>removeFriend(f.uid,f.username)}>🗑️</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <BottomNav/>
+    </div></div></>
+  );
+
+  // ── MESSAGES SCREEN ────────────────────────────────────────────────────────────
   if(screen==="messages") return(
     <><style>{CSS}</style>
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
