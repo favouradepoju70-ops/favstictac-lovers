@@ -403,6 +403,11 @@ export default function App() {
   const [showLoginBonus, setShowLoginBonus] = useState(false);
   const [loginBonusCoins, setLoginBonusCoins] = useState(0);
   const [userCoins, setUserCoins] = useState(0);
+  // Themes & symbols
+  const [activeTheme, setActiveTheme] = useState("dark");
+  const [ownedThemes, setOwnedThemes] = useState(["dark"]);
+  const [activeSymbols, setActiveSymbols] = useState({X:"default", O:"default"});
+  const [ownedSymbols, setOwnedSymbols] = useState(["default"]);
   // Chat popup & voice notes
   const [chatPopup, setChatPopup] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -883,6 +888,33 @@ export default function App() {
   };
 
   // ── ACHIEVEMENTS DEFINITIONS ────────────────────────────────────────────────
+  // ── THEMES & SYMBOLS DEFINITIONS ───────────────────────────────────────────
+  const THEMES = [
+    {id:"dark", name:"Dark Night", price:0, colors:{bg:"#08080f",card:"#111118",border:"#22223a",accent:"#ffd700",x:"#ff4757",o:"#2ed573",muted:"#5a5a7a"}, preview:["#08080f","#111118","#ffd700"]},
+    {id:"ocean", name:"Ocean Blue", price:100, colors:{bg:"#020d1a",card:"#051525",border:"#0a3060",accent:"#00d4ff",x:"#ff6b6b",o:"#00d4ff",muted:"#3a6080"}, preview:["#020d1a","#051525","#00d4ff"]},
+    {id:"fire", name:"Fire Red", price:100, colors:{bg:"#1a0500",card:"#2a0800",border:"#5a1500",accent:"#ff6600",x:"#ff6600",o:"#ffd700",muted:"#7a3a1a"}, preview:["#1a0500","#2a0800","#ff6600"]},
+    {id:"forest", name:"Forest Green", price:100, colors:{bg:"#010a03",card:"#051508",border:"#0a3010",accent:"#00ff7f",x:"#ff4757",o:"#00ff7f",muted:"#2a6040"}, preview:["#010a03","#051508","#00ff7f"]},
+    {id:"galaxy", name:"Galaxy Purple", price:150, colors:{bg:"#05010f",card:"#0d0520",border:"#2a1060",accent:"#bf5fff",x:"#ff4757",o:"#bf5fff",muted:"#5a3a7a"}, preview:["#05010f","#0d0520","#bf5fff"]},
+    {id:"sunset", name:"Sunset Orange", price:150, colors:{bg:"#1a0a00",card:"#251200",border:"#5a2a00",accent:"#ff8c00",x:"#ff4757",o:"#ff8c00",muted:"#7a4a1a"}, preview:["#1a0a00","#251200","#ff8c00"]},
+    {id:"ice", name:"Ice Crystal", price:200, colors:{bg:"#010a1a",card:"#051525",border:"#1a4060",accent:"#a0e4ff",x:"#ff4757",o:"#a0e4ff",muted:"#3a6080"}, preview:["#010a1a","#051525","#a0e4ff"]},
+    {id:"gold", name:"Gold VIP ⭐", price:500, colors:{bg:"#0a0800",card:"#1a1400",border:"#4a3800",accent:"#ffd700",x:"#ff6600",o:"#ffd700",muted:"#6a5a1a"}, preview:["#0a0800","#1a1400","#ffd700"]},
+  ];
+
+  const SYMBOLS = [
+    {id:"default", name:"Classic ✕ ○", price:0, xEmoji:null, oEmoji:null},
+    {id:"cats", name:"🐱 vs 🐶", price:50, xEmoji:"🐱", oEmoji:"🐶"},
+    {id:"hearts", name:"❤️ vs 💙", price:50, xEmoji:"❤️", oEmoji:"💙"},
+    {id:"stars", name:"⭐ vs 🌙", price:50, xEmoji:"⭐", oEmoji:"🌙"},
+    {id:"fire", name:"🔥 vs 💧", price:75, xEmoji:"🔥", oEmoji:"💧"},
+    {id:"fruits", name:"🍎 vs 🍊", price:75, xEmoji:"🍎", oEmoji:"🍊"},
+    {id:"crowns", name:"👑 vs 💎", price:100, xEmoji:"👑", oEmoji:"💎"},
+    {id:"planets", name:"🌍 vs 🪐", price:100, xEmoji:"🌍", oEmoji:"🪐"},
+    {id:"dragons", name:"🐉 vs 🦄", price:150, xEmoji:"🐉", oEmoji:"🦄"},
+  ];
+
+  const currentTheme = THEMES.find(t=>t.id===activeTheme)||THEMES[0];
+  const currentSymbol = SYMBOLS.find(s=>s.id===activeSymbols.X)||SYMBOLS[0];
+
   const ACHIEVEMENTS = [
     {id:"first_win", icon:"🏆", title:"First Victory!", desc:"Win your first game"},
     {id:"win_5", icon:"⭐", title:"Rising Star", desc:"Win 5 games"},
@@ -909,6 +941,11 @@ export default function App() {
         setUserStats(data);
         setStreak(data.streak||0);
         setUserCoins(data.coins||0);
+        // Load themes & symbols
+        if(data.ownedThemes) setOwnedThemes(data.ownedThemes);
+        if(data.activeTheme) setActiveTheme(data.activeTheme);
+        if(data.ownedSymbols) setOwnedSymbols(data.ownedSymbols);
+        if(data.activeSymbols) setActiveSymbols(data.activeSymbols);
         // Check daily login bonus
         const lastLogin = data.lastLogin||0;
         const today = new Date().toDateString();
@@ -918,7 +955,6 @@ export default function App() {
           const bonus = Math.min(10 + (dayStreak*5), 50);
           setLoginBonusCoins(bonus);
           setShowLoginBonus(true);
-          // Update last login and coins
           const {updateDoc} = window._fb;
           await updateDoc(doc(db,"user_stats",uid),{
             lastLogin:Date.now(),
@@ -928,16 +964,59 @@ export default function App() {
           setUserCoins(c=>c+bonus);
         }
       } else {
-        // First time — create stats doc
         const {setDoc} = window._fb;
         await setDoc(doc(db,"user_stats",uid),{
           wins:0,draws:0,games:0,streak:0,bestStreak:0,
           achievements:[],coins:50,lastLogin:Date.now(),loginStreak:1,
+          ownedThemes:["dark"],activeTheme:"dark",
+          ownedSymbols:["default"],activeSymbols:{X:"default",O:"default"},
         });
         setUserCoins(50);
         setLoginBonusCoins(50);
         setShowLoginBonus(true);
       }
+    } catch(e){ console.error(e); }
+  };
+
+  // ── BUY THEME ──────────────────────────────────────────────────────────────
+  const buyTheme = async (theme) => {
+    if(userCoins < theme.price){alert("Not enough coins! You need 🪙 "+theme.price+" coins.");return;}
+    if(ownedThemes.includes(theme.id)){setActiveTheme(theme.id);saveThemePrefs(theme.id, activeSymbols);return;}
+    const newOwned = [...ownedThemes, theme.id];
+    const newCoins = userCoins - theme.price;
+    setOwnedThemes(newOwned);
+    setActiveTheme(theme.id);
+    setUserCoins(newCoins);
+    saveThemePrefs(theme.id, activeSymbols, newOwned, newCoins);
+  };
+
+  const buySymbol = async (symbol) => {
+    if(userCoins < symbol.price){alert("Not enough coins! You need 🪙 "+symbol.price+" coins.");return;}
+    if(ownedSymbols.includes(symbol.id)){
+      const newSymbols = {X:symbol.id, O:symbol.id};
+      setActiveSymbols(newSymbols);
+      saveThemePrefs(activeTheme, newSymbols);
+      return;
+    }
+    const newOwned = [...ownedSymbols, symbol.id];
+    const newCoins = userCoins - symbol.price;
+    const newSymbols = {X:symbol.id, O:symbol.id};
+    setOwnedSymbols(newOwned);
+    setActiveSymbols(newSymbols);
+    setUserCoins(newCoins);
+    saveThemePrefs(activeTheme, newSymbols, ownedThemes, newCoins, newOwned);
+  };
+
+  const saveThemePrefs = async (theme, symbols, newOwnedThemes, newCoins, newOwnedSymbols) => {
+    const {doc, updateDoc} = window._fb;
+    try {
+      await updateDoc(doc(db,"user_stats",authUser.uid),{
+        activeTheme: theme,
+        activeSymbols: symbols,
+        ownedThemes: newOwnedThemes||ownedThemes,
+        ownedSymbols: newOwnedSymbols||ownedSymbols,
+        coins: newCoins!==undefined ? newCoins : userCoins,
+      });
     } catch(e){ console.error(e); }
   };
 
@@ -1532,7 +1611,7 @@ export default function App() {
   // ── HOME ─────────────────────────────────────────────────────────────────────
   if(screen==="home") return(
     <><style>{CSS}</style>
-    <div className="app"><div style={{width:"100%",maxWidth:420}}>
+    <div className="app" style={{background:`radial-gradient(ellipse at 15% 40%,${currentTheme.colors.bg} 0%,#08080f 55%)`}}><div style={{width:"100%",maxWidth:420}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:20}}><Logo/><div className="tagline">Welcome back, {authUser.username}! 🎮</div></div>
 
@@ -1651,7 +1730,10 @@ export default function App() {
             </span>
           </div>
         )}
-        <div className="board">{board.map((v,i)=>(<div key={i} className={cellClass(i)} onClick={()=>handleCellClick(i)}>{v==="X"&&<XIcon/>}{v==="O"&&<OIcon/>}</div>))}</div>
+        <div className="board">{board.map((v,i)=>(<div key={i} className={cellClass(i)} onClick={()=>handleCellClick(i)}>
+          {v==="X"&&(currentSymbol.xEmoji?<span style={{fontSize:"clamp(1.2rem,6vw,2rem)"}}>{currentSymbol.xEmoji}</span>:<XIcon/>)}
+          {v==="O"&&(currentSymbol.oEmoji?<span style={{fontSize:"clamp(1.2rem,6vw,2rem)"}}>{currentSymbol.oEmoji}</span>:<OIcon/>)}
+        </div>))}</div>
         <div className={statusClass()}>{getStatus()}</div>
         <div className="row" style={{marginTop:10}}>
           <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={resetGame}>↺ New</button>
@@ -2092,6 +2174,7 @@ export default function App() {
           </div>
         </div>
 
+        <button className="btn btn-primary" onClick={()=>setScreen("shop")}>🛍️ Theme Shop (🪙 {userCoins} coins)</button>
         <button className="btn btn-primary" onClick={()=>{loadCoinHistory();setScreen("coins")}}>🪙 Coin Wallet ({userCoins} coins)</button>
         <button className="btn btn-outline" onClick={()=>setScreen("achievements")}>🏅 My Achievements ({(userStats.achievements||[]).length}/{ACHIEVEMENTS.length})</button>
         <button className="btn btn-outline" onClick={()=>{loadMyHistory(authUser.uid);setScreen("history")}}>📜 View Game History</button>
@@ -2229,6 +2312,114 @@ export default function App() {
         )}
 
         <button className="btn btn-outline" onClick={()=>setScreen("profile")}>← Back to Profile</button>
+      </div>
+    </div></div></>
+  );
+
+  // ── THEME SHOP ────────────────────────────────────────────────────────────────
+  if(screen==="shop") return(
+    <><style>{CSS}</style>
+    <div className="app" style={{background:`radial-gradient(ellipse at 15% 40%,${currentTheme.colors.bg} 0%,#08080f 55%)`}}>
+    <div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="profile"/>
+      <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">🛍️ Theme Shop</div></div>
+
+      {/* Balance */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
+        <div className="coins-display" style={{fontSize:".85rem",padding:"8px 16px"}}>🪙 {userCoins} coins available</div>
+      </div>
+
+      <div className="card gap">
+        <div className="tabs">
+          <button className={`tab ${screen==="shop"?"active":""}`} onClick={()=>{}}>🎨 Board Themes</button>
+          <button className={`tab`} onClick={()=>setScreen("symbol-shop")}>✕ Symbols</button>
+        </div>
+
+        {/* Themes Grid */}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {THEMES.map(t=>{
+            const owned = ownedThemes.includes(t.id);
+            const active = activeTheme===t.id;
+            return(
+              <div key={t.id} style={{display:"flex",gap:12,alignItems:"center",padding:"12px",borderRadius:12,
+                border:`2px solid ${active?t.colors.accent:"var(--border)"}`,
+                background:active?`rgba(${parseInt(t.colors.accent.slice(1,3),16)},${parseInt(t.colors.accent.slice(3,5),16)},${parseInt(t.colors.accent.slice(5,7),16)},0.08)`:"#16161f",
+                cursor:"pointer",transition:"all .2s"}} onClick={()=>buyTheme(t)}>
+                {/* Color preview */}
+                <div style={{display:"flex",gap:3,flexShrink:0}}>
+                  {t.preview.map((c,i)=>(
+                    <div key={i} style={{width:i===0?28:i===1?22:16,height:44,borderRadius:6,background:c,border:"1px solid rgba(255,255,255,.1)"}}/>
+                  ))}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:".85rem",color:active?t.colors.accent:"#f0ede8"}}>{t.name}</div>
+                  <div style={{fontSize:".65rem",color:"var(--muted)",marginTop:3}}>
+                    {active?"✅ Active":owned?"✅ Owned — tap to activate":t.price===0?"Free":"🪙 "+t.price+" coins"}
+                  </div>
+                </div>
+                <div style={{flexShrink:0}}>
+                  {active&&<span style={{color:t.colors.accent,fontSize:"1.2rem"}}>✓</span>}
+                  {!active&&!owned&&<span style={{fontSize:".72rem",color:userCoins>=t.price?t.colors.accent:"var(--muted)",fontWeight:700}}>
+                    {userCoins>=t.price?"Buy":"🔒"}
+                  </span>}
+                  {!active&&owned&&<span style={{fontSize:".72rem",color:"var(--o)",fontWeight:700}}>Use</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button className="btn btn-outline" onClick={()=>setScreen("profile")}>← Back</button>
+      </div>
+    </div></div></>
+  );
+
+  // ── SYMBOL SHOP ───────────────────────────────────────────────────────────────
+  if(screen==="symbol-shop") return(
+    <><style>{CSS}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="shop"/>
+      <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">✕ Symbol Shop</div></div>
+      <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
+        <div className="coins-display" style={{fontSize:".85rem",padding:"8px 16px"}}>🪙 {userCoins} coins available</div>
+      </div>
+      <div className="card gap">
+        <div className="tabs">
+          <button className="tab" onClick={()=>setScreen("shop")}>🎨 Board Themes</button>
+          <button className="tab active">✕ Symbols</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {SYMBOLS.map(s=>{
+            const owned = ownedSymbols.includes(s.id);
+            const active = activeSymbols.X===s.id;
+            return(
+              <div key={s.id} style={{display:"flex",gap:12,alignItems:"center",padding:"12px",borderRadius:12,
+                border:`2px solid ${active?"var(--accent)":"var(--border)"}`,
+                background:active?"rgba(255,215,0,.06)":"#16161f",
+                cursor:"pointer",transition:"all .2s"}} onClick={()=>buySymbol(s)}>
+                {/* Preview */}
+                <div style={{display:"flex",gap:8,alignItems:"center",fontSize:"1.5rem",minWidth:70,justifyContent:"center"}}>
+                  {s.xEmoji?<span>{s.xEmoji}</span>:<span style={{color:"var(--x)",fontSize:"1.2rem",fontWeight:900}}>✕</span>}
+                  <span style={{color:"var(--muted)",fontSize:".8rem"}}>vs</span>
+                  {s.oEmoji?<span>{s.oEmoji}</span>:<span style={{color:"var(--o)",fontSize:"1.2rem",fontWeight:900}}>○</span>}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:".85rem",color:active?"var(--accent)":"#f0ede8"}}>{s.name}</div>
+                  <div style={{fontSize:".65rem",color:"var(--muted)",marginTop:3}}>
+                    {active?"✅ Active":owned?"✅ Owned — tap to activate":s.price===0?"Free":"🪙 "+s.price+" coins"}
+                  </div>
+                </div>
+                <div>
+                  {active&&<span style={{color:"var(--accent)",fontSize:"1.2rem"}}>✓</span>}
+                  {!active&&!owned&&<span style={{fontSize:".72rem",color:userCoins>=s.price?"var(--accent)":"var(--muted)",fontWeight:700}}>
+                    {userCoins>=s.price?"Buy":"🔒"}
+                  </span>}
+                  {!active&&owned&&<span style={{fontSize:".72rem",color:"var(--o)",fontWeight:700}}>Use</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button className="btn btn-outline" onClick={()=>setScreen("profile")}>← Back</button>
       </div>
     </div></div></>
   );
