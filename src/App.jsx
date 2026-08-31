@@ -46,9 +46,10 @@ async function initFirebase() {
 }
 
 // ── GAME LOGIC ────────────────────────────────────────────────────────────────
-const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-const calcWinner = (b) => { for(const [a,c,d] of WINS) if(b[a]&&b[a]===b[c]&&b[a]===b[d]) return {winner:b[a],line:[a,c,d]}; return null; };
-const minimax = (board,isMax,depth=0) => { const w=calcWinner(board); if(w) return w.winner==="O"?10-depth:depth-10; if(!board.includes(null)) return 0; const moves=board.map((v,i)=>v===null?i:-1).filter(i=>i>=0); if(isMax){let b=-Infinity;for(const m of moves){const nb=[...board];nb[m]="O";b=Math.max(b,minimax(nb,false,depth+1));}return b;}else{let b=Infinity;for(const m of moves){const nb=[...board];nb[m]="X";b=Math.min(b,minimax(nb,true,depth+1));}return b;}};
+const getWinCombos = (size) => { const combos=[]; for(let r=0;r<size;r++){const row=[];for(let c=0;c<size;c++)row.push(r*size+c);combos.push(row);} for(let c=0;c<size;c++){const col=[];for(let r=0;r<size;r++)col.push(r*size+c);combos.push(col);} const d1=[],d2=[]; for(let i=0;i<size;i++){d1.push(i*size+i);d2.push(i*size+(size-1-i));} combos.push(d1,d2); return combos; };
+const calcWinnerForSize = (b, size=3) => { const combos=getWinCombos(size); for(const combo of combos){ const first=b[combo[0]]; if(first&&combo.every(i=>b[i]===first)) return {winner:first,line:combo}; } return null; };
+const calcWinner = (b, size=3) => calcWinnerForSize(b, size);
+const minimax = (board,isMax,depth=0) => { const w=calcWinner(board); if(w) return w.winner==="O"?10-depth:depth-10; if(!board.includes(null)) return 0; const moves=board.map((v,i)=>v===null?i:-1).filter(i=>i>=0); if(isMax){let b=-Infinity;for(const m of moves){const nb=[...board];nb[m]="O";b=Math.max(b,minimax(nb,false,depth+1));}return b;}else{let b=Infinity;for(const m of moves){const nb=[...board];nb[m]="X";b=Math.min(b,minimax(nb,true,depth+1));}return b;} };
 const bestMove = (board) => { let best=-Infinity,move=-1; board.forEach((v,i)=>{if(v===null){const nb=[...board];nb[i]="O";const s=minimax(nb,false);if(s>best){best=s;move=i;}}}); return move; };
 
 // ── ICONS ─────────────────────────────────────────────────────────────────────
@@ -57,11 +58,21 @@ const OIcon = () => <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" s
 const EyeIcon = ({show}) => show ? <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> : <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
 
 // ── CSS ───────────────────────────────────────────────────────────────────────
-const CSS = `
+const getCSS = (theme) => `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#08080f;color:#f0ede8;font-family:'Space Mono',monospace;min-height:100vh}
-:root{--x:#ff4757;--o:#2ed573;--card:#111118;--border:#22223a;--accent:#ffd700;--muted:#5a5a7a;--success:#2ed573;--error:#ff4757}
+body{background:${theme.colors.bg};color:#f0ede8;font-family:'Space Mono',monospace;min-height:100vh}
+:root{
+  --x:${theme.colors.x};
+  --o:${theme.colors.o};
+  --card:${theme.colors.card};
+  --border:${theme.colors.border};
+  --accent:${theme.colors.accent};
+  --muted:${theme.colors.muted};
+  --bg:${theme.colors.bg};
+  --success:#2ed573;
+  --error:#ff4757;
+}
 .app{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;
   background:radial-gradient(ellipse at 15% 40%,#1a0828 0%,#08080f 55%),radial-gradient(ellipse at 85% 60%,#0a1a10 0%,transparent 50%)}
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.5rem,6vw,2.4rem);letter-spacing:-1px;line-height:1}
@@ -317,6 +328,7 @@ export default function App() {
   // Screens & game
   const [screen, setScreen] = useState("home");
   const [mode, setMode] = useState("local");
+  const [boardSize, setBoardSize] = useState(3); // 3, 4, or 5
   const [players, setPlayers] = useState({X:"",O:""});
   const [board, setBoard] = useState(Array(9).fill(null));
   const [turn, setTurn] = useState("X");
@@ -328,6 +340,10 @@ export default function App() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [myHistory, setMyHistory] = useState([]);
   const [onlineRoom, setOnlineRoom] = useState("");
+  // In-app notifications
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [onlineRole, setOnlineRole] = useState(null);
   const [roomInput, setRoomInput] = useState("");
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
@@ -580,6 +596,9 @@ export default function App() {
         text, senderUid:authUser.uid, senderName:authUser.username,
         senderPhoto:authUser.photoURL||null, createdAt:now,
       });
+      // Send notification to recipient
+      await sendNotification(activeConvo.uid, "message", "💬 New Message",
+        `${authUser.username}: ${text.slice(0,50)}${text.length>50?"...":""}`);
     } catch(e) { console.error(e); }
     setPrivSending(false);
   };
@@ -744,6 +763,53 @@ export default function App() {
     return ()=>unsub();
   },[authUser?.uid, fbReady]);
 
+  // Subscribe to in-app notifications
+  useEffect(()=>{
+    if(!authUser||!fbReady) return;
+    const {collection, query, where, orderBy, limit, onSnapshot} = window._fb;
+    const q = query(
+      collection(db,`users/${authUser.uid}/notifications`),
+      orderBy("createdAt","desc"),
+      limit(50)
+    );
+    const unsub = onSnapshot(q, snap=>{
+      const notifs = snap.docs.map(d=>({id:d.id,...d.data()}));
+      setNotifications(notifs);
+      setUnreadNotifs(notifs.filter(n=>!n.read).length);
+    });
+    return ()=>unsub();
+  },[authUser?.uid, fbReady]);
+
+  // Helper to send notification
+  const sendNotification = async (toUid, type, title, body, data={}) => {
+    if(!toUid||toUid===authUser.uid) return;
+    const {collection, addDoc, serverTimestamp} = window._fb;
+    try {
+      await addDoc(collection(db,`users/${toUid}/notifications`),{
+        type, title, body, data,
+        read:false, createdAt:serverTimestamp(),
+        fromUid:authUser.uid, fromUsername:authUser.username,
+        fromPhoto:authUser.photoURL||null,
+      });
+    } catch(e){ console.error(e); }
+  };
+
+  // Mark notification as read
+  const markNotifRead = async (notifId) => {
+    const {doc, updateDoc} = window._fb;
+    try { await updateDoc(doc(db,`users/${authUser.uid}/notifications`,notifId),{read:true}); } catch {}
+  };
+
+  // Mark all notifications as read
+  const markAllNotifsRead = async () => {
+    const {doc, updateDoc} = window._fb;
+    try {
+      for(const n of notifications.filter(n=>!n.read)){
+        await updateDoc(doc(db,`users/${authUser.uid}/notifications`,n.id),{read:true});
+      }
+    } catch {}
+  };
+
   // Update online status
   useEffect(()=>{
     if(!authUser||!fbReady) return;
@@ -793,6 +859,9 @@ export default function App() {
         toUid:toUser.uid, toUsername:toUser.username,
         status:"pending", createdAt:serverTimestamp(),
       });
+      // Send notification
+      await sendNotification(toUser.uid, "friend_request", "👥 Friend Request",
+        `${authUser.username} sent you a friend request!`, {fromUid:authUser.uid});
       setSentRequests(s=>[...s,{toUid:toUser.uid}]);
       setFriendMsg("success:Friend request sent to "+toUser.username+"! 🎉");
     } catch { setFriendMsg("error:Failed to send request. Try again."); }
@@ -813,6 +882,9 @@ export default function App() {
       });
       setFriends(f=>[...f,{uid:req.fromUid, username:req.fromUsername, photoURL:req.fromPhoto||null}]);
       setFriendRequests(r=>r.filter(r=>r.id!==req.id));
+      // Send notification to requester
+      await sendNotification(req.fromUid, "friend_accepted", "✅ Friend Request Accepted",
+        `${authUser.username} accepted your friend request! You are now friends 🎉`);
       setFriendMsg("success:You and "+req.fromUsername+" are now friends! 🎉");
     } catch { setFriendMsg("error:Failed to accept. Try again."); }
     setTimeout(()=>setFriendMsg(""),3000);
@@ -1173,23 +1245,33 @@ export default function App() {
     if(!file) return;
     if(file.size>2*1024*1024){setPhotoMsg("error:Image must be under 2MB");return;}
     setUploadingPhoto(true); setPhotoMsg("");
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        const {ref,uploadString,getDownloadURL,updateProfile,doc,updateDoc,getDoc} = window._fb;
-        const storageRef = ref(storage,`avatars/${authUser.uid}`);
-        await uploadString(storageRef, ev.target.result,'data_url');
-        const url = await getDownloadURL(storageRef);
-        await updateProfile(window._fb.auth.currentUser,{photoURL:url});
-        await updateDoc(doc(db,"users",authUser.uid),{photoURL:url});
-        const lbSnap=await getDoc(doc(db,"leaderboard",authUser.uid));
-        if(lbSnap.exists()) await updateDoc(doc(db,"leaderboard",authUser.uid),{photoURL:url});
-        setAuthUser(u=>({...u,photoURL:url}));
-        setPhotoMsg("success:Profile picture updated! ✅");
-      } catch { setPhotoMsg("error:Upload failed. Try again."); }
-      setUploadingPhoto(false);
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Upload to Cloudinary
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "ml_default");
+      formData.append("cloud_name", "rdq6hm3y");
+      formData.append("folder", "favstictac_avatars");
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/rdq6hm3y/image/upload",
+        { method:"POST", body:formData }
+      );
+      const data = await response.json();
+      if(!data.secure_url) throw new Error("Upload failed");
+      const url = data.secure_url;
+      // Save URL to Firebase
+      const {updateProfile, doc, updateDoc, getDoc} = window._fb;
+      await updateProfile(window._fb.auth.currentUser,{photoURL:url});
+      await updateDoc(doc(db,"users",authUser.uid),{photoURL:url});
+      const lbSnap = await getDoc(doc(db,"leaderboard",authUser.uid));
+      if(lbSnap.exists()) await updateDoc(doc(db,"leaderboard",authUser.uid),{photoURL:url});
+      setAuthUser(u=>({...u,photoURL:url}));
+      setPhotoMsg("success:Profile picture updated! ✅");
+    } catch(e) { 
+      console.error(e);
+      setPhotoMsg("error:Upload failed. Try again."); 
+    }
+    setUploadingPhoto(false);
   };
 
   // ── ONLINE ROOM ─────────────────────────────────────────────────────────────
@@ -1322,14 +1404,14 @@ export default function App() {
     setAnimCell(i); setTimeout(()=>setAnimCell(null),300);
     const nb=[...currentBoard]; nb[i]=currentTurn;
     const newLog=[...moveLog,{player:currentTurn,cell:i,time:Date.now()}];
-    const w=calcWinner(nb); const isDraw=!w&&!nb.includes(null);
+    const w=calcWinnerForSize(nb, boardSize); const isDraw=!w&&!nb.includes(null);
     const newResult=w||(isDraw?"draw":null);
     const newTurn=currentTurn==="X"?"O":"X";
     setBoard(nb); setMoveLog(newLog);
     if(newResult){setResult(newResult);if(newResult!=="draw")setWinLine(newResult.line);if(mode!=="online")await saveGameToFirestore(newResult,newLog,players);}
     else{setTurn(newTurn);}
     if(mode==="online"){const {doc,updateDoc}=window._fb;await updateDoc(doc(db,"rooms",onlineRoom),{board:nb,turn:newTurn,moveLog:newLog,result:newResult,winLine:newResult&&newResult!=="draw"?newResult.line:null});}
-  },[board,turn,result,mode,onlineRole,onlineRoom,moveLog,players,waitingForOpponent]);
+  },[board,turn,result,mode,onlineRole,onlineRoom,moveLog,players,waitingForOpponent,boardSize]);
 
   const resetGame = async () => {
     // Switch who starts next round
@@ -1367,12 +1449,15 @@ export default function App() {
     const p1IsX = p1Symbol==="X";
     const xName = p1IsX ? (p1Name||authUser.username) : (p2Name||(setupMode==="ai"?"AI Bot 🤖":"Player 2"));
     const oName = p1IsX ? (p2Name||(setupMode==="ai"?"AI Bot 🤖":"Player 2")) : (p1Name||authUser.username);
-    setMode(setupMode);
+    // Disable AI for larger boards
+    const actualMode = boardSize>3?"local":setupMode;
+    setMode(actualMode);
     setPlayers({X:xName, O:oName});
-    // Who goes first
     const p1GoesFirst = firstPlayer==="p1";
     const firstTurn = p1GoesFirst ? (p1IsX?"X":"O") : (p1IsX?"O":"X");
-    setBoard(Array(9).fill(null)); setTurn(firstTurn); setResult(null); setWinLine(null); setMoveLog([]);
+    const cells = boardSize*boardSize;
+    setBoard(Array(cells).fill(null));
+    setTurn(firstTurn); setResult(null); setWinLine(null); setMoveLog([]);
     setScores({X:0,O:0,draw:0}); resultHandledRef.current=false;
     setRoundStarter(firstPlayer);
     setScreen("game");
@@ -1392,6 +1477,11 @@ export default function App() {
       <div style={{display:"flex",gap:6,alignItems:"center"}}>
         <div className="coins-display">🪙 {userCoins}</div>
         {streak>=3&&<div className="streak-badge hot">🔥 {streak}</div>}
+        {/* Notification Bell */}
+        <button onClick={()=>setScreen("notifications")} style={{position:"relative",background:"none",border:"1px solid var(--border)",borderRadius:8,padding:"6px 8px",cursor:"pointer",color:"#f0ede8",fontSize:"1rem"}}>
+          🔔
+          {unreadNotifs>0&&<span style={{position:"absolute",top:-6,right:-6,background:"var(--error)",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:".55rem",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{unreadNotifs>9?"9+":unreadNotifs}</span>}
+        </button>
         {backTo&&<button className="btn btn-outline btn-sm" onClick={()=>setScreen(backTo)} style={{width:"auto"}}>{backLabel||"←"}</button>}
         <button className="btn btn-outline btn-sm" onClick={handleLogout} style={{width:"auto"}}>Out</button>
       </div>
@@ -1400,17 +1490,17 @@ export default function App() {
 
   const BottomNav = () => (
     <div className="bottom-nav">
-      {[["🏠","home","Home"],["🎮","play","Play"],["👥","friends","Friends"],["💬","messages","DMs"],["👤","profile","Me"]].map(([icon,s,label])=>(
+      {[["🏠","home","Home"],["🎮","play","Play"],["👥","friends","Friends"],["🔔","notifications","Notifs"],["👤","profile","Me"]].map(([icon,s,label])=>(
         <button key={s} className={`nav-item ${(screen===s||(s==="play"&&screen==="home"))?"active":""}`}
           onClick={()=>{
             if(s==="play") setScreen("home");
             else if(s==="friends"){loadFriends();setScreen("friends");}
-            else if(s==="messages"){setScreen("messages");subscribeConversations();}
+            else if(s==="notifications") setScreen("notifications");
             else setScreen(s);
           }}>
           <span style={{fontSize:"1.1rem"}}>{icon}</span>
-          {s==="messages"&&totalUnread>0&&<span className="nav-badge">{totalUnread>9?"9+":totalUnread}</span>}
           {s==="friends"&&totalFriendRequests>0&&<span className="nav-badge">{totalFriendRequests>9?"9+":totalFriendRequests}</span>}
+          {s==="notifications"&&unreadNotifs>0&&<span className="nav-badge">{unreadNotifs>9?"9+":unreadNotifs}</span>}
           <span style={{fontSize:".52rem",textTransform:"uppercase",letterSpacing:"1px"}}>{label}</span>
         </button>
       ))}
@@ -1419,7 +1509,7 @@ export default function App() {
 
   // ── LOADING ──────────────────────────────────────────────────────────────────
   if(authLoading||!fbReady) return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app" style={{gap:16,textAlign:"center"}}>
       <Logo/>
       {fbError?<div className="alert alert-error" style={{maxWidth:300}}>Failed to connect. Check internet.</div>
@@ -1429,7 +1519,7 @@ export default function App() {
 
   // ── DAILY LOGIN BONUS ─────────────────────────────────────────────────────────
   if(showLoginBonus) return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="bonus-overlay">
       <div className="bonus-box">
         <div style={{fontSize:"2rem",marginBottom:8}}>🎁</div>
@@ -1456,7 +1546,7 @@ export default function App() {
     </div>
   ):null;
   if(showWelcome) return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="welcome-overlay">
       <div className="welcome-box">
         <div className="welcome-emoji">🎉</div>
@@ -1479,7 +1569,7 @@ export default function App() {
 
   // ── AUTH ─────────────────────────────────────────────────────────────────────
   if(!authUser) return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app">
       <div style={{width:"100%",maxWidth:400,display:"flex",flexDirection:"column",alignItems:"center",gap:20}}>
         <div style={{textAlign:"center"}}><Logo/><div className="tagline">⚡ Sign in to play & connect</div></div>
@@ -1520,7 +1610,7 @@ export default function App() {
 
   // ── GAME SETUP ────────────────────────────────────────────────────────────────
   if(screen==="game-setup") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar backTo="home"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/>
@@ -1573,6 +1663,26 @@ export default function App() {
           </div>
         </div>
 
+        {/* Board Size */}
+        <div className="field">
+          <div className="label">📐 Board Size</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {[[3,"3×3","Classic"],[4,"4×4","Hard"],[5,"5×5","Expert"]].map(([size,label,diff])=>(
+              <button key={size} onClick={()=>setBoardSize(size)}
+                style={{padding:"12px 6px",borderRadius:9,border:`2px solid ${boardSize===size?"var(--accent)":"var(--border)"}`,
+                  background:boardSize===size?"rgba(255,215,0,.1)":"#16161f",
+                  color:boardSize===size?"var(--accent)":"var(--muted)",
+                  cursor:"pointer",fontFamily:"'Space Mono',monospace",fontSize:".72rem",fontWeight:700,textAlign:"center"}}>
+                <div style={{fontSize:"1rem",marginBottom:2}}>{label}</div>
+                <div style={{fontSize:".6rem",opacity:.7}}>{diff}</div>
+              </button>
+            ))}
+          </div>
+          {boardSize===4&&<div style={{fontSize:".65rem",color:"var(--accent)",marginTop:4,textAlign:"center"}}>⚠️ Get 4 in a row to win!</div>}
+          {boardSize===5&&<div style={{fontSize:".65rem",color:"var(--accent)",marginTop:4,textAlign:"center"}}>⚠️ Get 5 in a row to win!</div>}
+          {boardSize!==3&&<div style={{fontSize:".62rem",color:"var(--muted)",marginTop:2,textAlign:"center"}}>AI not available for larger boards</div>}
+        </div>
+
         {/* Timer Mode */}
         <div className="field">
           <div className="label">⏱️ Timer Mode</div>
@@ -1610,7 +1720,7 @@ export default function App() {
 
   // ── HOME ─────────────────────────────────────────────────────────────────────
   if(screen==="home") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app" style={{background:`radial-gradient(ellipse at 15% 40%,${currentTheme.colors.bg} 0%,#08080f 55%)`}}><div style={{width:"100%",maxWidth:420}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:20}}><Logo/><div className="tagline">Welcome back, {authUser.username}! 🎮</div></div>
@@ -1650,7 +1760,7 @@ export default function App() {
 
   // ── ONLINE LOBBY ─────────────────────────────────────────────────────────────
   if(screen==="online-lobby") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar backTo="home"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🌐 Online Multiplayer</div></div>
@@ -1670,7 +1780,7 @@ export default function App() {
 
   // ── GAME ─────────────────────────────────────────────────────────────────────
   if(screen==="game") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar backTo="home"/>
       {mode==="online"&&onlineRoom&&(
@@ -1730,10 +1840,13 @@ export default function App() {
             </span>
           </div>
         )}
-        <div className="board">{board.map((v,i)=>(<div key={i} className={cellClass(i)} onClick={()=>handleCellClick(i)}>
-          {v==="X"&&(currentSymbol.xEmoji?<span style={{fontSize:"clamp(1.2rem,6vw,2rem)"}}>{currentSymbol.xEmoji}</span>:<XIcon/>)}
-          {v==="O"&&(currentSymbol.oEmoji?<span style={{fontSize:"clamp(1.2rem,6vw,2rem)"}}>{currentSymbol.oEmoji}</span>:<OIcon/>)}
-        </div>))}</div>
+        <div className="board" style={{gridTemplateColumns:`repeat(${boardSize},1fr)`,gap:boardSize===5?"6px":boardSize===4?"7px":"9px"}}>
+          {board.map((v,i)=>(<div key={i} className={cellClass(i)} onClick={()=>handleCellClick(i)}
+            style={{borderRadius:boardSize===5?"8px":boardSize===4?"10px":"12px"}}>
+            {v==="X"&&(currentSymbol.xEmoji?<span style={{fontSize:boardSize===5?"clamp(.8rem,4vw,1.3rem)":boardSize===4?"clamp(1rem,5vw,1.6rem)":"clamp(1.2rem,6vw,2rem)"}}>{currentSymbol.xEmoji}</span>:<XIcon/>)}
+            {v==="O"&&(currentSymbol.oEmoji?<span style={{fontSize:boardSize===5?"clamp(.8rem,4vw,1.3rem)":boardSize===4?"clamp(1rem,5vw,1.6rem)":"clamp(1.2rem,6vw,2rem)"}}>{currentSymbol.oEmoji}</span>:<OIcon/>)}
+          </div>))}
+        </div>
         <div className={statusClass()}>{getStatus()}</div>
         <div className="row" style={{marginTop:10}}>
           <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={resetGame}>↺ New</button>
@@ -1785,7 +1898,7 @@ export default function App() {
 
   // ── FRIENDS SCREEN ────────────────────────────────────────────────────────────
   if(screen==="friends") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="home"/>
       <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">👥 Friends</div></div>
@@ -1895,7 +2008,7 @@ export default function App() {
 
   // ── MESSAGES SCREEN ────────────────────────────────────────────────────────────
   if(screen==="messages") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">💬 Messages</div></div>
@@ -1955,7 +2068,7 @@ export default function App() {
 
   // ── PRIVATE CHAT ──────────────────────────────────────────────────────────────
   if(screen==="private-chat"&&activeConvo) return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
       {/* Chat header */}
       <div className="topbar">
@@ -2005,7 +2118,7 @@ export default function App() {
 
   // ── VIEW PLAYER PROFILE ───────────────────────────────────────────────────────
   if(screen==="view-profile"&&viewingProfile) return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:420}}>
       <TopBar backTo="messages"/>
       <div className="card gap">
@@ -2045,7 +2158,7 @@ export default function App() {
 
   // ── LEADERBOARD ───────────────────────────────────────────────────────────────
   if(screen==="leaderboard") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🏆 Global Leaderboard</div></div>
@@ -2074,7 +2187,7 @@ export default function App() {
 
   // ── HISTORY ───────────────────────────────────────────────────────────────────
   if(screen==="history") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="leaderboard"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">📜 {authUser.username}'s History</div></div>
@@ -2103,7 +2216,7 @@ export default function App() {
 
   // ── PROFILE ───────────────────────────────────────────────────────────────────
   if(screen==="profile") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">👤 My Profile</div></div>
@@ -2190,7 +2303,7 @@ export default function App() {
   // ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
   // ── COIN WALLET ───────────────────────────────────────────────────────────────
   if(screen==="coins") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="profile"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🪙 Coin Wallet</div></div>
@@ -2318,7 +2431,7 @@ export default function App() {
 
   // ── THEME SHOP ────────────────────────────────────────────────────────────────
   if(screen==="shop") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app" style={{background:`radial-gradient(ellipse at 15% 40%,${currentTheme.colors.bg} 0%,#08080f 55%)`}}>
     <div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="profile"/>
@@ -2375,7 +2488,7 @@ export default function App() {
 
   // ── SYMBOL SHOP ───────────────────────────────────────────────────────────────
   if(screen==="symbol-shop") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="shop"/>
       <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">✕ Symbol Shop</div></div>
@@ -2426,7 +2539,7 @@ export default function App() {
 
   // ── ACHIEVEMENTS SCREEN ───────────────────────────────────────────────────────
   if(screen==="achievements") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="profile"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🏅 Achievements</div></div>
@@ -2463,9 +2576,64 @@ export default function App() {
     </div></div></>
   );
 
+  // ── NOTIFICATIONS SCREEN ─────────────────────────────────────────────────────
+  if(screen==="notifications") return(
+    <><style>{getCSS(currentTheme)}</style>
+    <div className="app"><div style={{width:"100%",maxWidth:440}}>
+      <TopBar backTo="home"/>
+      <div style={{textAlign:"center",marginBottom:12}}><Logo small/><div className="tagline">🔔 Notifications</div></div>
+      <div className="card">
+        {/* Mark all read button */}
+        {unreadNotifs>0&&(
+          <button className="btn btn-outline btn-sm" style={{marginBottom:12,width:"100%"}} onClick={markAllNotifsRead}>
+            ✅ Mark All as Read ({unreadNotifs} unread)
+          </button>
+        )}
+
+        {notifications.length===0&&(
+          <div style={{textAlign:"center",color:"var(--muted)",padding:"32px 0",fontSize:".78rem"}}>
+            No notifications yet! 🔔<br/>Play games and connect with friends!
+          </div>
+        )}
+
+        <div style={{maxHeight:"65vh",overflowY:"auto",scrollbarWidth:"thin",display:"flex",flexDirection:"column",gap:8}}>
+          {notifications.map(n=>(
+            <div key={n.id} onClick={()=>{markNotifRead(n.id);
+              if(n.type==="message"){setScreen("messages");}
+              else if(n.type==="friend_request"||n.type==="friend_accepted"){loadFriends();setScreen("friends");}
+            }} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"12px",borderRadius:10,
+              background:n.read?"#16161f":"rgba(255,215,0,.06)",
+              border:`1px solid ${n.read?"var(--border)":"var(--accent)"}`,
+              cursor:"pointer",transition:"all .18s"}}>
+              {/* Avatar */}
+              <div style={{width:40,height:40,borderRadius:"50%",background:"linear-gradient(135deg,#1a0828,#0a1a10)",
+                border:"2px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:".85rem",fontWeight:700,overflow:"hidden",flexShrink:0}}>
+                {n.fromPhoto?<img src={n.fromPhoto} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  :n.fromUsername?.slice(0,2).toUpperCase()}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                  <div style={{fontWeight:700,fontSize:".78rem",color:n.read?"#f0ede8":"var(--accent)"}}>{n.title}</div>
+                  {!n.read&&<div style={{width:8,height:8,borderRadius:"50%",background:"var(--accent)",flexShrink:0}}/>}
+                </div>
+                <div style={{fontSize:".72rem",color:"var(--muted)",lineHeight:1.5}}>{n.body}</div>
+                <div style={{fontSize:".6rem",color:"var(--muted)",marginTop:4}}>
+                  {n.createdAt?.seconds?new Date(n.createdAt.seconds*1000).toLocaleString():"Just now"}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button className="btn btn-outline" style={{marginTop:12}} onClick={()=>setScreen("home")}>← Back to Home</button>
+      </div>
+      <BottomNav/>
+    </div></div></>
+  );
+
   // ── PRIVACY POLICY ───────────────────────────────────────────────────────────
   if(screen==="privacy") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="home"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">🔒 Privacy Policy</div></div>
@@ -2505,7 +2673,7 @@ export default function App() {
 
   // ── FEEDBACK ─────────────────────────────────────────────────────────────────
   if(screen==="feedback") return(
-    <><style>{CSS}</style>
+    <><style>{getCSS(currentTheme)}</style>
     <div className="app"><div style={{width:"100%",maxWidth:440}}>
       <TopBar backTo="home"/>
       <div style={{textAlign:"center",marginBottom:16}}><Logo small/><div className="tagline">📝 Send Feedback</div></div>
