@@ -49,8 +49,84 @@ async function initFirebase() {
 const getWinCombos = (size) => { const combos=[]; for(let r=0;r<size;r++){const row=[];for(let c=0;c<size;c++)row.push(r*size+c);combos.push(row);} for(let c=0;c<size;c++){const col=[];for(let r=0;r<size;r++)col.push(r*size+c);combos.push(col);} const d1=[],d2=[]; for(let i=0;i<size;i++){d1.push(i*size+i);d2.push(i*size+(size-1-i));} combos.push(d1,d2); return combos; };
 const calcWinnerForSize = (b, size=3) => { const combos=getWinCombos(size); for(const combo of combos){ const first=b[combo[0]]; if(first&&combo.every(i=>b[i]===first)) return {winner:first,line:combo}; } return null; };
 const calcWinner = (b, size=3) => calcWinnerForSize(b, size);
-const minimax = (board,isMax,depth=0) => { const w=calcWinner(board); if(w) return w.winner==="O"?10-depth:depth-10; if(!board.includes(null)) return 0; const moves=board.map((v,i)=>v===null?i:-1).filter(i=>i>=0); if(isMax){let b=-Infinity;for(const m of moves){const nb=[...board];nb[m]="O";b=Math.max(b,minimax(nb,false,depth+1));}return b;}else{let b=Infinity;for(const m of moves){const nb=[...board];nb[m]="X";b=Math.min(b,minimax(nb,true,depth+1));}return b;} };
-const bestMove = (board) => { let best=-Infinity,move=-1; board.forEach((v,i)=>{if(v===null){const nb=[...board];nb[i]="O";const s=minimax(nb,false);if(s>best){best=s;move=i;}}}); return move; };
+const getWinCombos = (size) => { const combos=[]; for(let r=0;r<size;r++){const row=[];for(let c=0;c<size;c++)row.push(r*size+c);combos.push(row);} for(let c=0;c<size;c++){const col=[];for(let r=0;r<size;r++)col.push(r*size+c);combos.push(col);} const d1=[],d2=[]; for(let i=0;i<size;i++){d1.push(i*size+i);d2.push(i*size+(size-1-i));} combos.push(d1,d2); return combos; };
+const calcWinnerForSize = (b, size=3) => { const combos=getWinCombos(size); for(const combo of combos){ const first=b[combo[0]]; if(first&&combo.every(i=>b[i]===first)) return {winner:first,line:combo}; } return null; };
+const calcWinner = (b, size=3) => calcWinnerForSize(b, size);
+
+// ── SMARTER AI — Cannot be beaten, handles speed exploitation ─────────────────
+const minimax = (board, isMax, depth=0, alpha=-Infinity, beta=Infinity) => {
+  const w = calcWinner(board);
+  if(w) return w.winner==="O" ? (100-depth) : (depth-100);
+  if(!board.includes(null)) return 0;
+  const moves = board.map((v,i)=>v===null?i:-1).filter(i=>i>=0);
+  if(isMax) {
+    let best=-Infinity;
+    for(const m of moves) {
+      const nb=[...board]; nb[m]="O";
+      best=Math.max(best, minimax(nb,false,depth+1,alpha,beta));
+      alpha=Math.max(alpha,best);
+      if(beta<=alpha) break; // Alpha-beta pruning
+    }
+    return best;
+  } else {
+    let best=Infinity;
+    for(const m of moves) {
+      const nb=[...board]; nb[m]="X";
+      best=Math.min(best, minimax(nb,true,depth+1,alpha,beta));
+      beta=Math.min(beta,best);
+      if(beta<=alpha) break;
+    }
+    return best;
+  }
+};
+
+// Smart AI that:
+// 1. Wins immediately if possible
+// 2. Blocks player from winning
+// 3. Takes center if available
+// 4. Takes corners strategically
+// 5. Falls back to minimax for perfect play
+const bestMove = (board) => {
+  const empty = board.map((v,i)=>v===null?i:-1).filter(i=>i>=0);
+  if(empty.length===0) return -1;
+
+  // 1. Check if AI can win immediately
+  for(const i of empty) {
+    const nb=[...board]; nb[i]="O";
+    if(calcWinner(nb)) return i;
+  }
+
+  // 2. Block player from winning immediately
+  for(const i of empty) {
+    const nb=[...board]; nb[i]="X";
+    if(calcWinner(nb)) return i;
+  }
+
+  // 3. Take center if empty
+  if(board[4]===null) return 4;
+
+  // 4. Take corners strategically
+  const corners = [0,2,6,8].filter(i=>board[i]===null);
+  // If player is in corner, take opposite corner
+  const opposites = {0:8,2:6,6:2,8:0};
+  for(const c of [0,2,6,8]) {
+    if(board[c]==="X" && board[opposites[c]]===null) return opposites[c];
+  }
+  if(corners.length>0) return corners[Math.floor(Math.random()*corners.length)];
+
+  // 5. Take edges
+  const edges = [1,3,5,7].filter(i=>board[i]===null);
+  if(edges.length>0) return edges[0];
+
+  // 6. Minimax for remaining moves
+  let best=-Infinity, move=empty[0];
+  for(const i of empty) {
+    const nb=[...board]; nb[i]="O";
+    const score=minimax(nb,false,0,-Infinity,Infinity);
+    if(score>best){best=score;move=i;}
+  }
+  return move;
+};
 
 // ── ICONS ─────────────────────────────────────────────────────────────────────
 const XIcon = () => <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"><line x1="8" y1="8" x2="32" y2="32"/><line x1="32" y1="8" x2="8" y2="32"/></svg>;
@@ -344,6 +420,9 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
+  // Global announcements
+  const [globalAnnouncements, setGlobalAnnouncements] = useState([]);
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState([]);
   const [onlineRole, setOnlineRole] = useState(null);
   const [roomInput, setRoomInput] = useState("");
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
@@ -779,6 +858,33 @@ export default function App() {
     });
     return ()=>unsub();
   },[authUser?.uid, fbReady]);
+
+  // Subscribe to global announcements
+  useEffect(()=>{
+    if(!fbReady) return;
+    const {collection, query, orderBy, limit, onSnapshot} = window._fb;
+    const q = query(collection(db,"announcements"), orderBy("createdAt","desc"), limit(5));
+    const unsub = onSnapshot(q, snap=>{
+      const newAnnouncements = snap.docs.map(d=>({id:d.id,...d.data()}));
+      setGlobalAnnouncements(newAnnouncements);
+      // Send notification for new announcements
+      if(authUser && newAnnouncements.length>0){
+        const latest = newAnnouncements[0];
+        const dismissed = JSON.parse(localStorage.getItem("dismissedAnnouncements")||"[]");
+        if(!dismissed.includes(latest.id)){
+          setUnreadNotifs(n=>n+1);
+        }
+      }
+    });
+    return ()=>unsub();
+  },[fbReady, authUser?.uid]);
+
+  const dismissAnnouncement = (id) => {
+    const dismissed = JSON.parse(localStorage.getItem("dismissedAnnouncements")||"[]");
+    dismissed.push(id);
+    localStorage.setItem("dismissedAnnouncements", JSON.stringify(dismissed));
+    setDismissedAnnouncements([...dismissed]);
+  };
 
   // Helper to send notification
   const sendNotification = async (toUid, type, title, body, data={}) => {
@@ -1391,15 +1497,25 @@ export default function App() {
   };
 
   // ── AI ──────────────────────────────────────────────────────────────────────
+  const [aiThinking, setAiThinking] = useState(false);
+
   useEffect(() => {
-    if(mode!=="ai"||turn!=="O"||result) return;
-    const t = setTimeout(()=>{const m=bestMove(board);if(m>=0) handleCellClick(m,board,"O");},550);
-    return ()=>clearTimeout(t);
+    if(mode!=="ai"||turn!=="O"||result||aiThinking) return;
+    setAiThinking(true);
+    // Random delay 300-800ms to feel natural but not exploitable
+    const delay = 300 + Math.random()*500;
+    const t = setTimeout(()=>{
+      const m = bestMove(board);
+      if(m>=0) handleCellClick(m,board,"O");
+      setAiThinking(false);
+    }, delay);
+    return ()=>{ clearTimeout(t); setAiThinking(false); };
   }, [turn,mode,board,result]);
 
   // ── CELL CLICK ──────────────────────────────────────────────────────────────
   const handleCellClick = useCallback(async (i,currentBoard=board,currentTurn=turn) => {
     if(currentBoard[i]||result) return;
+    if(mode==="ai"&&(currentTurn==="O"||aiThinking)) return; // Block clicks during AI turn
     if(mode==="online"){if(waitingForOpponent||onlineRole!==currentTurn) return;}
     setAnimCell(i); setTimeout(()=>setAnimCell(null),300);
     const nb=[...currentBoard]; nb[i]=currentTurn;
@@ -1464,7 +1580,13 @@ export default function App() {
   };
 
   const cellClass=(i)=>{let c="cell";if(board[i])c+=` filled ${board[i]==="X"?"x-cell":"o-cell"}`;if(winLine?.includes(i))c+=" win-cell";if(animCell===i)c+=" anim";return c;};
-  const getStatus=()=>{if(mode==="online"&&waitingForOpponent)return"⏳ Waiting for opponent…";if(!result)return`${turn==="X"?players.X:players.O}'s turn (${turn})`;if(result==="draw")return"It's a Draw! 🤝";return`${result.winner==="X"?players.X:players.O} wins! 🎉`;};
+  const getStatus=()=>{
+    if(mode==="online"&&waitingForOpponent) return "⏳ Waiting for opponent…";
+    if(mode==="ai"&&aiThinking) return "🤖 AI is thinking…";
+    if(!result) return `${turn==="X"?players.X:players.O}'s turn (${turn})`;
+    if(result==="draw") return "It's a Draw! 🤝";
+    return `${result.winner==="X"?players.X:players.O} wins! 🎉`;
+  };
   const statusClass=()=>{if(!result)return"status";if(result==="draw")return"status draw";return result.winner==="X"?"status win-x":"status win-o";};
   const fmtTime=(ts)=>{if(!ts?.seconds) return "";const d=new Date(ts.seconds*1000);return d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});};
 
@@ -1725,6 +1847,26 @@ export default function App() {
       <TopBar/>
       <div style={{textAlign:"center",marginBottom:20}}><Logo/><div className="tagline">Welcome back, {authUser.username}! 🎮</div></div>
 
+      {/* Global Announcements Banner */}
+      {globalAnnouncements.filter(a=>!dismissedAnnouncements.includes(a.id)).slice(0,1).map(a=>(
+        <div key={a.id} style={{background:"rgba(255,215,0,.1)",border:"2px solid var(--accent)",borderRadius:12,
+          padding:"12px 14px",marginBottom:12,position:"relative"}}>
+          <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+            <span style={{fontSize:"1.2rem"}}>📢</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:".65rem",color:"var(--accent)",fontWeight:700,textTransform:"uppercase",
+                letterSpacing:1,marginBottom:3}}>Announcement from Admin</div>
+              <div style={{fontSize:".78rem",color:"#f0ede8",lineHeight:1.5}}>{a.text}</div>
+              <div style={{fontSize:".6rem",color:"var(--muted)",marginTop:4}}>
+                {a.createdAt?.seconds?new Date(a.createdAt.seconds*1000).toLocaleDateString():""}
+              </div>
+            </div>
+            <button onClick={()=>dismissAnnouncement(a.id)}
+              style={{background:"none",border:"none",color:"var(--muted)",cursor:"pointer",fontSize:"1rem",padding:0,flexShrink:0}}>✕</button>
+          </div>
+        </div>
+      ))}
+
       {/* Quick Stats Banner */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
         {[["🪙",userCoins,"Coins"],["🔥",streak,"Streak"],["🏅",(userStats.achievements||[]).length,"Badges"]].map(([icon,val,lbl])=>(
@@ -1840,7 +1982,13 @@ export default function App() {
             </span>
           </div>
         )}
-        <div className="board" style={{gridTemplateColumns:`repeat(${boardSize},1fr)`,gap:boardSize===5?"6px":boardSize===4?"7px":"9px"}}>
+        <div className="board" style={{
+          gridTemplateColumns:`repeat(${boardSize},1fr)`,
+          gap:boardSize===5?"6px":boardSize===4?"7px":"9px",
+          opacity:aiThinking?0.7:1,
+          pointerEvents:aiThinking?"none":"auto",
+          transition:"opacity .2s"
+        }}>
           {board.map((v,i)=>(<div key={i} className={cellClass(i)} onClick={()=>handleCellClick(i)}
             style={{borderRadius:boardSize===5?"8px":boardSize===4?"10px":"12px"}}>
             {v==="X"&&(currentSymbol.xEmoji?<span style={{fontSize:boardSize===5?"clamp(.8rem,4vw,1.3rem)":boardSize===4?"clamp(1rem,5vw,1.6rem)":"clamp(1.2rem,6vw,2rem)"}}>{currentSymbol.xEmoji}</span>:<XIcon/>)}
@@ -2590,11 +2738,33 @@ export default function App() {
           </button>
         )}
 
-        {notifications.length===0&&(
+        {notifications.length===0&&globalAnnouncements.length===0&&(
           <div style={{textAlign:"center",color:"var(--muted)",padding:"32px 0",fontSize:".78rem"}}>
             No notifications yet! 🔔<br/>Play games and connect with friends!
           </div>
         )}
+
+        {/* Global Announcements in notifications */}
+        {globalAnnouncements.length>0&&(
+          <div style={{marginBottom:12}}>
+            <div className="label" style={{marginBottom:8}}>📢 Announcements</div>
+            {globalAnnouncements.map(a=>(
+              <div key={a.id} style={{display:"flex",gap:10,padding:"12px",borderRadius:10,
+                background:"rgba(255,215,0,.06)",border:"1px solid rgba(255,215,0,.2)",marginBottom:8}}>
+                <span style={{fontSize:"1.5rem"}}>📢</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:".78rem",color:"var(--accent)"}}>Admin Announcement</div>
+                  <div style={{fontSize:".72rem",color:"#f0ede8",lineHeight:1.5,marginTop:3}}>{a.text}</div>
+                  <div style={{fontSize:".6rem",color:"var(--muted)",marginTop:4}}>
+                    By {a.createdBy} · {a.createdAt?.seconds?new Date(a.createdAt.seconds*1000).toLocaleDateString():""}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {notifications.length>0&&<div className="label" style={{marginBottom:8}}>🔔 Your Notifications</div>}
 
         <div style={{maxHeight:"65vh",overflowY:"auto",scrollbarWidth:"thin",display:"flex",flexDirection:"column",gap:8}}>
           {notifications.map(n=>(
@@ -2906,14 +3076,30 @@ function AdminDashboard({authUser, db, onBack}) {
     if(!announcement.trim()) return;
     setAnnoucementBusy(true);
     try {
-      const {collection, addDoc, serverTimestamp} = window._fb;
+      const {collection, addDoc, getDocs, serverTimestamp} = window._fb;
+      // Add announcement
       await addDoc(collection(db,"announcements"),{
         text:announcement.trim(), createdAt:serverTimestamp(),
         createdBy:authUser.username, uid:authUser.uid,
       });
+      // Send notification to ALL users
+      const usersSnap = await getDocs(collection(db,"users"));
+      const notifPromises = usersSnap.docs
+        .filter(d=>d.id!==authUser.uid)
+        .map(d=>addDoc(collection(db,`users/${d.id}/notifications`),{
+          type:"announcement",
+          title:"📢 Announcement from Admin",
+          body:announcement.trim().slice(0,100)+(announcement.length>100?"...":""),
+          read:false,
+          createdAt:serverTimestamp(),
+          fromUid:authUser.uid,
+          fromUsername:"👑 Admin",
+          fromPhoto:authUser.photoURL||null,
+        }));
+      await Promise.all(notifPromises);
       setAnnouncement("");
-      setActionMsg("success:Announcement sent to all users! ✅");
-    } catch { setActionMsg("error:Failed to send announcement."); }
+      setActionMsg("success:Announcement sent to all "+usersSnap.docs.length+" users! ✅");
+    } catch(e) { setActionMsg("error:Failed to send announcement."); }
     setAnnoucementBusy(false);
     setTimeout(()=>setActionMsg(""),3000);
   };
