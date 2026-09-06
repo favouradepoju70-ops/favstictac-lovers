@@ -49,9 +49,6 @@ async function initFirebase() {
 const getWinCombos = (size) => { const combos=[]; for(let r=0;r<size;r++){const row=[];for(let c=0;c<size;c++)row.push(r*size+c);combos.push(row);} for(let c=0;c<size;c++){const col=[];for(let r=0;r<size;r++)col.push(r*size+c);combos.push(col);} const d1=[],d2=[]; for(let i=0;i<size;i++){d1.push(i*size+i);d2.push(i*size+(size-1-i));} combos.push(d1,d2); return combos; };
 const calcWinnerForSize = (b, size=3) => { const combos=getWinCombos(size); for(const combo of combos){ const first=b[combo[0]]; if(first&&combo.every(i=>b[i]===first)) return {winner:first,line:combo}; } return null; };
 const calcWinner = (b, size=3) => calcWinnerForSize(b, size);
-const getWinCombos = (size) => { const combos=[]; for(let r=0;r<size;r++){const row=[];for(let c=0;c<size;c++)row.push(r*size+c);combos.push(row);} for(let c=0;c<size;c++){const col=[];for(let r=0;r<size;r++)col.push(r*size+c);combos.push(col);} const d1=[],d2=[]; for(let i=0;i<size;i++){d1.push(i*size+i);d2.push(i*size+(size-1-i));} combos.push(d1,d2); return combos; };
-const calcWinnerForSize = (b, size=3) => { const combos=getWinCombos(size); for(const combo of combos){ const first=b[combo[0]]; if(first&&combo.every(i=>b[i]===first)) return {winner:first,line:combo}; } return null; };
-const calcWinner = (b, size=3) => calcWinnerForSize(b, size);
 
 // ── SMARTER AI — Cannot be beaten, handles speed exploitation ─────────────────
 const minimax = (board, isMax, depth=0, alpha=-Infinity, beta=Infinity) => {
@@ -1498,24 +1495,56 @@ export default function App() {
 
   // ── AI ──────────────────────────────────────────────────────────────────────
   const [aiThinking, setAiThinking] = useState(false);
+  const aiThinkingRef = useRef(false);
+  const boardRef = useRef(board);
+  const turnRef = useRef(turn);
+  const modeRef = useRef(mode);
+  const resultRef = useRef(result);
 
+  // Keep refs in sync
+  useEffect(()=>{ boardRef.current=board; },[board]);
+  useEffect(()=>{ turnRef.current=turn; },[turn]);
+  useEffect(()=>{ modeRef.current=mode; },[mode]);
+  useEffect(()=>{ resultRef.current=result; },[result]);
+
+  // ── AI MOVE ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if(mode!=="ai"||turn!=="O"||result||aiThinking) return;
+    if(mode!=="ai"||turn!=="O"||result) return;
+    if(aiThinkingRef.current) return;
+    aiThinkingRef.current = true;
     setAiThinking(true);
-    // Random delay 300-800ms to feel natural but not exploitable
-    const delay = 300 + Math.random()*500;
+    const delay = 400 + Math.random()*400;
     const t = setTimeout(()=>{
-      const m = bestMove(board);
-      if(m>=0) handleCellClick(m,board,"O");
+      const currentBoard = boardRef.current;
+      const currentResult = resultRef.current;
+      if(currentResult) { aiThinkingRef.current=false; setAiThinking(false); return; }
+      const m = bestMove(currentBoard);
+      if(m>=0 && currentBoard[m]===null){
+        const nb=[...currentBoard]; nb[m]="O";
+        const w=calcWinnerForSize(nb,3);
+        const isDraw=!w&&!nb.includes(null);
+        const newResult=w||(isDraw?"draw":null);
+        setBoard(nb);
+        setMoveLog(prev=>[...prev,{player:"O",cell:m,time:Date.now()}]);
+        if(newResult){
+          setResult(newResult);
+          if(newResult!=="draw") setWinLine(newResult.line);
+          saveGameToFirestore(newResult,[...boardRef.current],players);
+        } else {
+          setTurn("X");
+        }
+      }
+      aiThinkingRef.current=false;
       setAiThinking(false);
     }, delay);
-    return ()=>{ clearTimeout(t); setAiThinking(false); };
-  }, [turn,mode,board,result]);
+    return ()=>{ clearTimeout(t); };
+  }, [turn, mode, result]);
 
   // ── CELL CLICK ──────────────────────────────────────────────────────────────
   const handleCellClick = useCallback(async (i,currentBoard=board,currentTurn=turn) => {
     if(currentBoard[i]||result) return;
-    if(mode==="ai"&&(currentTurn==="O"||aiThinking)) return; // Block clicks during AI turn
+    // Prevent clicking during AI turn or when it's AI's turn
+    if(mode==="ai"&&(currentTurn==="O"||aiThinkingRef.current)) return;
     if(mode==="online"){if(waitingForOpponent||onlineRole!==currentTurn) return;}
     setAnimCell(i); setTimeout(()=>setAnimCell(null),300);
     const nb=[...currentBoard]; nb[i]=currentTurn;
@@ -3665,4 +3694,3 @@ function AdminDashboard({authUser, db, onBack}) {
     </div>
   );
 }
-
